@@ -4,16 +4,35 @@ import (
 	"github.com/labstack/echo"
 	"gitlab.com/wondervoyage/platform/models"
 	"net/http"
+	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"time"
-	"fmt"
 )
 
 func home(c echo.Context) error {
 	return c.String(http.StatusOK, "Welcome Home !")
 }
 
+func createUser(c echo.Context) error {
+	u := new(models.User)
+	if err := c.Bind(u); err != nil {
+		return err
+	}
+
+	if err :=models.AddUser(*u); err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, u)
+}
+
 func getAllUsers(c echo.Context) error {
+	user := c.Get("user").(*jwt.Token)
+	claims := user.Claims.(jwt.MapClaims)
+	account := claims["account"].(string)
+	isAdmin := claims["admin"].(bool)
+
+	fmt.Printf("Request from user: %s [admin=%t]", account, isAdmin)
+
     users := models.AllUsers()
 	return c.JSON(http.StatusOK, users)
 }

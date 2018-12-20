@@ -15,8 +15,13 @@ func init() {
 	Router.Use(middleware.Recover())
 
 	Router.GET("/", home)
-	Router.GET("user/all", getAllUsers)
-	Router.POST("user/login", login)
+	Router.POST("/login", login)
+	Router.POST("user/add", createUser)
+
+	g := Router.Group("/platform")
+	g.Use(middleware.JWT([]byte("secret")))
+	g.GET("/user/all", getAllUsers)
+
 }
 
 

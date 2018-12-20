@@ -1,0 +1,27 @@
+version: '3'
+services:
+    webadmin:
+        image: wondervoyage/platform
+        container_name: platform
+        ports:
+           - 9080:9080
+       
+       # environment:
+       #    - PGADMIN_DEFAULT_EMAIL=gary.chang.2.0@gmail.com
+       #    - PGADMIN_DEFAULT_PASSWORD=n4925173
+        depends_on:
+           - pgdb
+        links:
+           - pgdb
+           
+    pgdb:
+        image: postgres:10.5   
+        container_name: platform_pgdb
+        ports:
+           - 15432:5432
+        environment:
+           - POSTGRES_USER=platformer
+           - POSTGRES_PASSWORD=postgres
+           - POSTGRES_DB=platform_db
+        
+        

@@ -10,9 +10,9 @@ import (
 
 type User struct {
 	gorm.Model
-	Account       string           `gorm:"unique;not null"`
-	Password      string           `gorm:"not null"`
-	Name          string
+	Account       string           `gorm:"unique;not null" json:"account"`
+	Password      string           `gorm:"not null" json:"password"`
+	Name          string           `json:"name"`
 	Attributes    []UserAttribute
 	PowerRecords  []PowerRecord
 }
@@ -42,7 +42,8 @@ var DB *gorm.DB
 
 func init()  {
 	var err error
-	DB, err = gorm.Open("postgres", "host=192.168.1.4 port=5432 user=postgres dbname=platform_db password=postgres sslmode=disable")
+	//DB, err = gorm.Open("postgres", "host=192.168.1.4 port=5432 user=postgres dbname=platform_db password=postgres sslmode=disable")
+	DB, err = gorm.Open("postgres", "host=pgdb port=5432 user=platformer dbname=platform_db password=postgres sslmode=disable")
 	if err != nil {
 		panic(err)
 	}
@@ -55,7 +56,7 @@ func init()  {
 func AddUser(u User) error {
 
 	if DB.Create(&u).Error != nil {
-		return errors.New("User already exists. ")
+		return errors.New("user already exists")
 	}
 	return nil
 }
@@ -81,7 +82,7 @@ func AddPowerRecord(pr PowerRecord) error {
 	pr.ID = t.Format("2006-01-02")
 	pr.Update = t
 	if DB.Create(&pr).Error != nil {
-		return errors.New("Error while adding PowerRecord.")
+		return errors.New("error while adding PowerRecord")
 	}
 	return nil
 }

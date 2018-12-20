@@ -16,7 +16,7 @@ func _TestAddUser(t * testing.T) {
 	}
 }
 
-func _TestLoginCheck(t *testing.T) {
+func TestLoginCheck(t *testing.T) {
 	t.Log("Begin unit tests of model User")
 
 	_, logged := LoginCheck("gary.chang", "12345")
@@ -27,7 +27,7 @@ func _TestLoginCheck(t *testing.T) {
 	}
 }
 
-func TestAddPowerRecord(t *testing.T) {
+func _TestAddPowerRecord(t *testing.T) {
 	pr := PowerRecord{KwhProduced: 10.5, KwhConsumed: 3.53, KwhSell: 0, KwhBuy: 0, UserID: 3}
 	if err := AddPowerRecord(pr); err != nil {
 		t.Error(err, balloX)
