@@ -25,25 +25,30 @@ type UserAttribute struct {
 }
 
 type PowerRecord struct {
-	ID           string  //yyyy-mm-dd
 	KwhProduced  float64
 	KwhConsumed  float64
-	KwhSell      float64
-	KwhBuy       float64
-	Update       time.Time
+	KwhStocked   float64
+	UpdatedAt    time.Time
 	UserID       uint
 }
 
 type Order struct {
-
+	ID         string     // UserID-Type-timestamp-of-CreatedAt  timestamp := time.Now().Unix()
+	Type       uint8      //1:buy, 2:sell
+	Kwh        float64
+    Price      float64
+    CreatedAt  time.Time
+    ExpiredAt  time.Time
+    Status     uint8
+	UserID     uint
 }
 
 var DB *gorm.DB
 
 func init()  {
 	var err error
-	//DB, err = gorm.Open("postgres", "host=192.168.1.4 port=5432 user=postgres dbname=platform_db password=postgres sslmode=disable")
-	DB, err = gorm.Open("postgres", "host=pgdb port=5432 user=platformer dbname=platform_db password=postgres sslmode=disable")
+	DB, err = gorm.Open("postgres", "host=192.168.1.4 port=5432 user=postgres dbname=platform_db password=postgres sslmode=disable")
+	//DB, err = gorm.Open("postgres", "host=pgdb port=5432 user=platformer dbname=platform_db password=postgres sslmode=disable")
 	if err != nil {
 		panic(err)
 	}
@@ -61,8 +66,8 @@ func AddUser(u User) error {
 	return nil
 }
 
-func AllUsers() []User{
-	var users []User
+func AllUsers() (users []User){
+	//var users []User
 	DB.Find(&users)
 	return users
 }
@@ -78,11 +83,20 @@ func LoginCheck(account string, passwd string) (*User, bool) {
 }
 
 func AddPowerRecord(pr PowerRecord) error {
-	t := time.Now()
-	pr.ID = t.Format("2006-01-02")
-	pr.Update = t
+	//t := time.Now()
+	//pr.ID = t.Format("2006-01-02")
+	//pr.UpdatedAt = time.Now()
 	if DB.Create(&pr).Error != nil {
 		return errors.New("error while adding PowerRecord")
 	}
 	return nil
+}
+
+func GetUserPowerRecords(uid uint) (records []PowerRecord) {
+	var user User
+    DB.First(&user, uid)
+
+	//var records []PowerRecord
+	DB.Model(&user).Related(&records)
+	return  records
 }

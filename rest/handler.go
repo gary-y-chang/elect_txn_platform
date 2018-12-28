@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"time"
+	"strconv"
 )
 
 func home(c echo.Context) error {
@@ -37,6 +38,15 @@ func getAllUsers(c echo.Context) error {
 	return c.JSON(http.StatusOK, users)
 }
 
+func getPowerRecordsByUID(c echo.Context) error {
+	userId := c.Param("uid")
+	uid, err := strconv.Atoi(userId); if err != nil {
+		return err
+	}
+	records := models.GetUserPowerRecords(uint(uid))
+	return c.JSON(http.StatusOK, records)
+}
+
 func login(c echo.Context) error {
 	account := c.FormValue("account")
 	pass := c.FormValue("password")
@@ -60,7 +70,14 @@ func login(c echo.Context) error {
 		if err != nil {
 			return err
 		}
+
+		//userByte, err := json.Marshal(u); if err != nil {
+		//	return err
+		//}
+
 		return c.JSON(http.StatusOK, map[string]string{
+			"user_id": strconv.Itoa(int(u.Model.ID)),
+			"user_account" : u.Account,
 			"token": t,
 		})
 	}

@@ -21,7 +21,7 @@ func init() {
 	g := Router.Group("/platform")
 	g.Use(middleware.JWT([]byte("secret")))
 	g.GET("/user/all", getAllUsers)
-
+    g.GET("/user/precords/:uid", getPowerRecordsByUID)
 }
 
 

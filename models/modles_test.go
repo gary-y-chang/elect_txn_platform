@@ -1,6 +1,10 @@
 package models
 
-import "testing"
+import (
+	"testing"
+	"time"
+	"fmt"
+)
 
 const checkMark  = "\u2713"
 const balloX  = "\u2717"
@@ -16,7 +20,7 @@ func _TestAddUser(t * testing.T) {
 	}
 }
 
-func TestLoginCheck(t *testing.T) {
+func _TestLoginCheck(t *testing.T) {
 	t.Log("Begin unit tests of model User")
 
 	_, logged := LoginCheck("gary.chang", "12345")
@@ -28,9 +32,19 @@ func TestLoginCheck(t *testing.T) {
 }
 
 func _TestAddPowerRecord(t *testing.T) {
-	pr := PowerRecord{KwhProduced: 10.5, KwhConsumed: 3.53, KwhSell: 0, KwhBuy: 0, UserID: 3}
+	pr := PowerRecord{KwhProduced: 6.35, KwhConsumed: 4.00, KwhStocked: 8.62, UpdatedAt: time.Now(), UserID: 2}
+
 	if err := AddPowerRecord(pr); err != nil {
 		t.Error(err, balloX)
+	}
+}
+
+func TestAllPowerRecordsOfUser(t *testing.T) {
+
+	records := GetUserPowerRecords(2)
+
+	for _, r := range records {
+		fmt.Printf("Stock: %g, Pro: %g, Date: %v\n",r.KwhStocked, r.KwhProduced, r.UpdatedAt)
 	}
 }
 
