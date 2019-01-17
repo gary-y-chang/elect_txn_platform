@@ -5,6 +5,7 @@ WORKDIR /go/src/gitlab.com/wondervoyage/platform
 RUN go get -u github.com/labstack/echo/...
 RUN go get -u github.com/jinzhu/gorm/dialects/postgres
 RUN go get -u github.com/jinzhu/gorm
+RUN go get -u github.com/satori/go.uuid
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install
 
 # final stage
