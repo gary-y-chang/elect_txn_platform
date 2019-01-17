@@ -14,9 +14,20 @@ func init() {
 	Router.Use(middleware.Logger())
 	Router.Use(middleware.Recover())
 
+	Router.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"*"},
+		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization, " api_key"},
+	}))
+	Router.Static("/static", "rest")
+
 	Router.GET("/", home)
+	Router.GET("/fabric", fabricSdk)
 	Router.POST("/login", login)
 	Router.POST("user/add", createUser)
+
+	//TODO temporary, will move to secure path "/platform"
+	Router.POST("order/add/:type", createOrder)
+	Router.GET("order/:type/:uid", getUndealtOrdersByUID)
 
 	g := Router.Group("/platform")
 	g.Use(middleware.JWT([]byte("secret")))

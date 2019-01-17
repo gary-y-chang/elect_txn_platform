@@ -39,12 +39,20 @@ func _TestAddPowerRecord(t *testing.T) {
 	}
 }
 
-func TestAllPowerRecordsOfUser(t *testing.T) {
+func _TestAllPowerRecordsOfUser(t *testing.T) {
 
 	records := GetUserPowerRecords(2)
 
 	for _, r := range records {
 		fmt.Printf("Stock: %g, Pro: %g, Date: %v\n",r.KwhStocked, r.KwhProduced, r.UpdatedAt)
+	}
+}
+
+func TestOrdersOfUser(t *testing.T) {
+	records := GetUserOrders(2, 1)
+
+	for _, r := range records {
+		fmt.Printf("ID: %s, Type: %d, Kwh: %f, CDate: %v\n",r.ID, r.Type, r.Kwh, r.CreatedAt)
 	}
 }
 
