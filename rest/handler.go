@@ -93,26 +93,31 @@ func createOrder(c echo.Context) error {
 		return err
 	}
 	//tp := c.Param("type")  //1:buy, 2:sell
-	switch tp := c.Param("type") ; tp {
-		case "buy":
-			ord.Type = 1
-		case "sell":
-			ord.Type = 2
-		default:
-			return echo.NewHTTPError(http.StatusBadRequest, "URL parameter error, order/[buy/sell]")
-			//return errors.New("request parameter error, correct:[buy/sell]")
-	}
+	//switch tp {
+	//	case "buy":
+	//		ord.Type = 1
+	//	case "sell":
+	//		ord.Type = 2
+	//	default:
+	//		return echo.NewHTTPError(http.StatusBadRequest, "URL parameter error, order/[buy/sell]")
+	//		//return errors.New("request parameter error, correct:[buy/sell]")
+	//}
 	ord.ID = uuid.Must(uuid.NewV4()).String()
 	ord.Status = 1
-	
+	//ord.KwhDealt = 0
+
 	if err :=models.AddOrder(*ord); err != nil {
 		return err
 	}
 
-	//TODO  next, invoke the chaincode to place the order
-
-
-	return c.JSON(http.StatusOK, ord)
+	//TODO  next, invoke the chaincode to place the order,  a DealTxn should be returned
+    // here is a simulation
+    txn := models.DealTxn{}
+    if txn.Kwh > 0 {  // if a deal complete, insert this TXN into DB, then update the buy and sell orders
+		models.AddDealTxn(txn)
+		models.UpdateOrderByTxn(txn)
+	}
+	return c.JSON(http.StatusOK, txn)
 }
 
 func getAllUsers(c echo.Context) error {
@@ -120,11 +125,16 @@ func getAllUsers(c echo.Context) error {
 	claims := user.Claims.(jwt.MapClaims)
 	account := claims["account"].(string)
 	isAdmin := claims["admin"].(bool)
+	fmt.Printf("Request from user: %s [admin=%t]\n", account, isAdmin)
 
-	fmt.Printf("Request from user: %s [admin=%t]", account, isAdmin)
+	pp, _ := strconv.Atoi(c.QueryParam("page"))
+    users, count := models.AllUsers(pp, 10)
+   // fmt.Printf("%+v\n", users)
 
-    users := models.AllUsers()
-	return c.JSON(http.StatusOK, users)
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"total": count,
+		"users": users,
+	})
 }
 
 func getPowerRecordsByUID(c echo.Context) error {
@@ -132,8 +142,12 @@ func getPowerRecordsByUID(c echo.Context) error {
 	uid, err := strconv.Atoi(userId); if err != nil {
 		return err
 	}
-	records := models.GetUserPowerRecords(uint(uid))
-	return c.JSON(http.StatusOK, records)
+	pp, _ := strconv.Atoi(c.QueryParam("page"))
+	records, count:= models.GetUserPowerRecords(uint(uid), pp, 10)
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"total":   count,
+		"records": records,
+	})
 }
 
 func getUndealtOrdersByUID(c echo.Context) error {
@@ -154,8 +168,37 @@ func getUndealtOrdersByUID(c echo.Context) error {
 		//return errors.New("request parameter error, correct:[buy/sell]")
 	}
 
-	orders := models.GetUserUndealtOrders(uint(uid), tpe)
-	return c.JSON(http.StatusOK, orders)
+	pp, _ := strconv.Atoi(c.QueryParam("page"))
+	orders, count := models.GetUserUndealtOrders(uint(uid), tpe, pp, 10)
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"total":   count,
+		"orders": orders,
+	})
+}
+
+func getDashboardInfo(c echo.Context) error {
+	uid, err := strconv.Atoi(c.Param("uid")); if err != nil {
+		return err
+	}
+	var buyKwh float64
+	buyOrders := models.GetUserAllUndealtOrders(uint(uid), 1)
+	for _, bo := range buyOrders {
+		buyKwh += bo.Kwh
+	}
+	var sellKwh float64
+	sellOrders := models.GetUserAllUndealtOrders(uint(uid), 2)
+	for _, so := range sellOrders {
+		sellKwh += so.Kwh
+	}
+
+	prd := models.GetLatestPowerRecord(uint(uid))
+
+	return c.JSON(http.StatusOK, map[string]string{
+		"stocked": fmt.Sprintf("%.2f", prd.KwhStocked),
+		"consumed" : fmt.Sprintf("%.2f", prd.KwhConsumed),
+		"on-sell": fmt.Sprintf("%.2f", sellKwh),
+		"on-buy": fmt.Sprintf("%.2f", buyKwh),
+	})
 }
 
 func login(c echo.Context) error {
@@ -175,7 +218,7 @@ func login(c echo.Context) error {
 		claims["account"] = u.Account
 		claims["uid"] = u.ID
 		claims["admin"] = false
-		claims["exp"] = time.Now().Add(time.Minute * 30).Unix()
+		claims["exp"] = time.Now().Add(time.Minute * 120).Unix()
 
 		// Generate encoded token and send it as response.
 		t, err := token.SignedString([]byte("secret"))

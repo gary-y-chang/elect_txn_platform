@@ -19,20 +19,21 @@ func init() {
 		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization, " api_key"},
 	}))
 	Router.Static("/static", "rest")
+	//Router.Static("/static", "/goapp")
 
-	Router.GET("/", home)
-	Router.GET("/fabric", fabricSdk)
+	Router.GET("/", home)  // for test
+	Router.GET("/fabric", fabricSdk) // for test
 	Router.POST("/login", login)
-	Router.POST("user/add", createUser)
+	Router.POST("/user/add", createUser)
 
-	//TODO temporary, will move to secure path "/platform"
-	Router.POST("order/add/:type", createOrder)
-	Router.GET("order/:type/:uid", getUndealtOrdersByUID)
 
 	g := Router.Group("/platform")
 	g.Use(middleware.JWT([]byte("secret")))
 	g.GET("/user/all", getAllUsers)
     g.GET("/user/precords/:uid", getPowerRecordsByUID)
+	g.GET("/user/dashboard/:uid", getDashboardInfo)
+	g.GET("/order/:type/:uid", getUndealtOrdersByUID)
+	g.POST("/order/add", createOrder)
 }
 
 

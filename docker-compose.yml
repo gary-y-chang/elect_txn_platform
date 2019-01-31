@@ -1,11 +1,10 @@
 version: '3'
 services:
-    webadmin:
+    platform_app:
         image: registry.gitlab.com/wondervoyage/platform
         container_name: platform
         ports:
            - 9080:9080
-       
        # environment:
        #    - PGADMIN_DEFAULT_EMAIL=gary.chang.2.0@gmail.com
        #    - PGADMIN_DEFAULT_PASSWORD=n4925173
@@ -23,5 +22,18 @@ services:
            - POSTGRES_USER=platformer
            - POSTGRES_PASSWORD=postgres
            - POSTGRES_DB=platform_db
+
+    apidoc:
+        image: swaggerapi/swagger-ui
+        container_name: swagger-ui
+        ports:
+           - 9090:8080
+        environment:
+           - API_URL=http://128.199.88.117:9080/static/apidoc.yaml
+         #  - API_URL=http://192.168.1.4:9080/static/apidoc.yaml
+        depends_on:
+           - platform_app
+        links:
+           - platform_app
         
         

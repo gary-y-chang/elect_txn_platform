@@ -15,5 +15,6 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install
 # final stage
 FROM alpine
 WORKDIR /goapp
+ADD ./rest/api-doc/apidoc.yaml /goapp/apidoc.yaml
 COPY --from=build-env /go/bin/platform /goapp
 ENTRYPOINT ./platform
