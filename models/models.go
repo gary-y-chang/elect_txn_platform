@@ -53,7 +53,8 @@ type Order struct {
 }
 
 type DealTxn struct {
-	ID           string     // transaction id from chaincode
+	ID           string     `gorm:"primary_key"` // transaction id from chaincode
+	Part         uint8      `gorm:"primary_key"`
 	Kwh          float64
 	Price        float64    // dealt price
 	TxnDate      time.Time  // display format 2018-11-20 23:45
@@ -65,10 +66,9 @@ var DB *gorm.DB
 
 func init()  {
 	var err error
-	DB, err = gorm.Open("postgres", "host=192.168.43.214 port=15432 user=platformer dbname=platform_db password=postgres sslmode=disable")
-
+	//DB, err = gorm.Open("postgres", "host=192.168.43.214 port=15432 user=platformer dbname=platform_db password=postgres sslmode=disable")
 	//DB, err = gorm.Open("postgres", "host=192.168.1.4 port=15432 user=platformer dbname=platform_db password=postgres sslmode=disable")
-	//DB, err = gorm.Open("postgres", "host=pgdb port=5432 user=platformer dbname=platform_db password=postgres sslmode=disable")
+	DB, err = gorm.Open("postgres", "host=pgdb port=5432 user=platformer dbname=platform_db password=postgres sslmode=disable")
 	if err != nil {
 		panic(err)
 	}

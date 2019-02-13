@@ -10,6 +10,8 @@ RUN go get -u github.com/hyperledger/fabric-sdk-go/pkg/core/config
 RUN go get -u github.com/hyperledger/fabric-sdk-go/pkg/fabsdk
 RUN go get -u github.com/hyperledger/fabric-sdk-go/pkg/client/channel
 RUN go get -u github.com/hyperledger/fabric-sdk-go/pkg/client/msp
+RUN go get -u github.com/syndtr/goleveldb/leveldb
+RUN go get -u github.com/gomodule/redigo/redis
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install
 
 # final stage

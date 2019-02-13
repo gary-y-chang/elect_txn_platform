@@ -14,6 +14,8 @@ import (
 	"github.com/hyperledger/fabric-sdk-go/pkg/client/channel"
 	mspclient "github.com/hyperledger/fabric-sdk-go/pkg/client/msp"
 	"github.com/satori/go.uuid"
+	"gitlab.com/wondervoyage/platform/simulation"
+	"encoding/json"
 )
 
 func home(c echo.Context) error {
@@ -103,7 +105,7 @@ func createOrder(c echo.Context) error {
 	//		//return errors.New("request parameter error, correct:[buy/sell]")
 	//}
 	ord.ID = uuid.Must(uuid.NewV4()).String()
-	ord.Status = 1
+	//ord.Status = 1
 	//ord.KwhDealt = 0
 
 	if err :=models.AddOrder(*ord); err != nil {
@@ -112,12 +114,26 @@ func createOrder(c echo.Context) error {
 
 	//TODO  next, invoke the chaincode to place the order,  a DealTxn should be returned
     // here is a simulation
-    txn := models.DealTxn{}
-    if txn.Kwh > 0 {  // if a deal complete, insert this TXN into DB, then update the buy and sell orders
-		models.AddDealTxn(txn)
-		models.UpdateOrderByTxn(txn)
+    var txnJson []byte
+	if ord.Type == 1 { //buy
+		txnJson, _ = simulation.BuyHandler(ord)
+	}else if ord.Type == 2 { //sell
+		txnJson, _ = simulation.SellHandler(ord)
 	}
-	return c.JSON(http.StatusOK, txn)
+
+	var txns []models.DealTxn
+    json.Unmarshal(txnJson, &txns)
+	for i, t := range txns {
+		if t.Kwh > 0 {  // if a deal complete, insert this TXN into DB, then update the buy and sell orders
+			fmt.Println("index: "+ strconv.Itoa(i))
+			t.Part = uint8(i+1)
+			txns[i] = t
+			models.AddDealTxn(t)
+			models.UpdateOrderByTxn(t)
+		}
+	}
+
+	return c.JSON(http.StatusOK, txns)
 }
 
 func getAllUsers(c echo.Context) error {
@@ -196,8 +212,8 @@ func getDashboardInfo(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{
 		"stocked": fmt.Sprintf("%.2f", prd.KwhStocked),
 		"consumed" : fmt.Sprintf("%.2f", prd.KwhConsumed),
-		"on-sell": fmt.Sprintf("%.2f", sellKwh),
-		"on-buy": fmt.Sprintf("%.2f", buyKwh),
+		"on_sell": fmt.Sprintf("%.2f", sellKwh),
+		"on_buy": fmt.Sprintf("%.2f", buyKwh),
 	})
 }
 
@@ -226,10 +242,7 @@ func login(c echo.Context) error {
 			return err
 		}
 
-		//userByte, err := json.Marshal(u); if err != nil {
-		//	return err
-		//}
-
+		c.Response().Header().Set("Cache-Control", "no-cache")
 		return c.JSON(http.StatusOK, map[string]string{
 			"user_id": strconv.Itoa(int(u.Model.ID)),
 			"user_account" : u.Account,

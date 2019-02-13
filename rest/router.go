@@ -18,8 +18,8 @@ func init() {
 		AllowOrigins: []string{"*"},
 		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization, " api_key"},
 	}))
-	Router.Static("/static", "rest")
-	//Router.Static("/static", "/goapp")
+	//Router.Static("/static", "rest")
+	Router.Static("/static", "/goapp")
 
 	Router.GET("/", home)  // for test
 	Router.GET("/fabric", fabricSdk) // for test

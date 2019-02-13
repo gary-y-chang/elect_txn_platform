@@ -10,8 +10,10 @@ services:
        #    - PGADMIN_DEFAULT_PASSWORD=n4925173
         depends_on:
            - pgdb
+           - redis
         links:
            - pgdb
+           - redis
            
     pgdb:
         image: postgres:10.5   
@@ -22,6 +24,12 @@ services:
            - POSTGRES_USER=platformer
            - POSTGRES_PASSWORD=postgres
            - POSTGRES_DB=platform_db
+
+    redis:
+        image: redis:5.0
+        container_name: platform_redis
+        ports:
+           - 6379:6379
 
     apidoc:
         image: swaggerapi/swagger-ui
