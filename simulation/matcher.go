@@ -1,51 +1,56 @@
 package simulation
 
 import (
-	"github.com/gomodule/redigo/redis"
-	"fmt"
 	"encoding/json"
-	"gitlab.com/wondervoyage/platform/models"
-	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/satori/go.uuid"
+	"fmt"
 	"time"
+
+	"github.com/gomodule/redigo/redis"
+	uuid "github.com/satori/go.uuid"
+	"github.com/syndtr/goleveldb/leveldb"
+	"gitlab.com/wondervoyage/platform/models"
 )
 
-func BuyHandler(buy *models.Order ) ([]byte, error) {
+func BuyHandler(buy models.Order) ([]byte, error) {
 
-	//level, err := leveldb.OpenFile("C:\\Database\\leveldb\\platform", nil)
-	level, err := leveldb.OpenFile("/root/wondervoyage/leveldb", nil)
+	level, err := leveldb.OpenFile("C:\\Database\\leveldb\\platform", nil)
+	//level, err := leveldb.OpenFile("/root/wondervoyage/leveldb", nil)
 	if err != nil {
 		panic(err)
 	}
 	defer level.Close()
 
-	//TODO : query Redis to check "Sell" list,  searching for the match selling order. If yes, update the status. if no, just push this buy order into Redis buying list
-	//c, err := redis.Dial("tcp", "192.168.1.4:6379")
-	c, err := redis.Dial("tcp", "redis:6379")
+	//  query Redis to check "Sell" list,  searching for the match selling order. If yes, update the status. if no, just push this buy order into Redis buying list
+	c, err := redis.Dial("tcp", "192.168.1.4:6379")
+	//c, err := redis.Dial("tcp", "redis:6379")
 	if err != nil {
 		panic(err)
 	}
 	defer c.Close()
 
-	txnId := uuid.Must(uuid.NewV4()).String()
-	txns  := make([]models.DealTxn, 0)
+	//txnId := uuid.Must(uuid.NewV4()).String()
+	txnId := uuid.NewV4().String()
+	txns := make([]models.DealTxn, 0)
 	st, err := redis.ByteSlices(c.Do("LRANGE", "simu-sell-list", 0, -1))
 	for i, o := range st {
 		var sale models.Order
 		err = json.Unmarshal(o, &sale)
 		//fmt.Printf("index %d    %#v\t%s\t%s\t%f\n", i, s, s.Id, s.Name, s.Height)
+		if buy.UserID == sale.UserID {
+			continue
+		}
 		if buy.Price >= sale.Price {
 			//order match !!!!
 			fmt.Printf("Matching sell order : index %d\t%#v\n", i, sale)
 			remains := sale.Kwh - sale.KwhDealt
 			unfilled := buy.Kwh - buy.KwhDealt
-			if remains - unfilled < 0 { // buy not-fulfilled, sold out
+			if remains-unfilled < 0 { // buy not-fulfilled, sold out
 				txn := models.DealTxn{}
 				// remove this sale from sell-list
 				v, err := c.Do("LREM", "simu-sell-list", 0, o)
 				if err != nil {
 					fmt.Printf(err.Error())
-				}else {
+				} else {
 					fmt.Printf("Redis Reply: %#v\n", v)
 				}
 				// then, update the state in the ledger
@@ -72,11 +77,13 @@ func BuyHandler(buy *models.Order ) ([]byte, error) {
 				local, _ := time.LoadLocation("Local")
 				txn.TxnDate = time.Now().In(local)
 				txn.BuyOrderID = buy.ID
+				txn.BuyDepositNo = buy.DepositNo
 				txn.SellOrderID = sale.ID
+				txn.SellDepositNo = sale.DepositNo
 				txns = append(txns, txn)
 
 				continue
-			} else if remains - unfilled > 0 { // buy fulfilled, not sold out
+			} else if remains-unfilled > 0 { // buy fulfilled, not sold out
 				txn := models.DealTxn{}
 				txn.Kwh = unfilled
 				sale.KwhDealt = sale.KwhDealt + txn.Kwh
@@ -91,13 +98,13 @@ func BuyHandler(buy *models.Order ) ([]byte, error) {
 				v, err = c.Do("RPUSH", "simu-sell-list", jsonSale)
 				if err != nil {
 					fmt.Printf(err.Error())
-				}else {
+				} else {
 					fmt.Printf("Redis Reply: %#v\n", v)
 				}
 
 				buy.KwhDealt = buy.KwhDealt + txn.Kwh
 				buy.Status = 2
-				jsonBuy, err := json.Marshal(*buy)
+				jsonBuy, err := json.Marshal(buy)
 				err = level.Put([]byte(buy.ID), jsonBuy, nil)
 
 				txn.ID = txnId
@@ -107,18 +114,20 @@ func BuyHandler(buy *models.Order ) ([]byte, error) {
 				local, _ := time.LoadLocation("Local")
 				txn.TxnDate = time.Now().In(local)
 				txn.BuyOrderID = buy.ID
+				txn.BuyDepositNo = buy.DepositNo
 				txn.SellOrderID = sale.ID
+				txn.SellDepositNo = sale.DepositNo
 				txns = append(txns, txn)
 				jsonTxn, err := json.Marshal(txns)
 
 				return jsonTxn, err
-			} else if remains - unfilled == 0 { // buy fulfilled, sold out
+			} else if remains-unfilled == 0 { // buy fulfilled, sold out
 				txn := models.DealTxn{}
 				// remove this sale from sell-list
 				v, err := c.Do("LREM", "simu-sell-list", 0, o)
 				if err != nil {
 					fmt.Printf(err.Error())
-				}else {
+				} else {
 					fmt.Printf("Redis Reply: %#v\n", v)
 				}
 				// then, update the state in the ledger
@@ -131,7 +140,7 @@ func BuyHandler(buy *models.Order ) ([]byte, error) {
 
 				buy.KwhDealt = buy.KwhDealt + txn.Kwh
 				buy.Status = 2
-				jsonBuy, err := json.Marshal(*buy)
+				jsonBuy, err := json.Marshal(buy)
 				err = level.Put([]byte(buy.ID), jsonBuy, nil)
 
 				txn.ID = txnId
@@ -141,7 +150,9 @@ func BuyHandler(buy *models.Order ) ([]byte, error) {
 				local, _ := time.LoadLocation("Local")
 				txn.TxnDate = time.Now().In(local)
 				txn.BuyOrderID = buy.ID
+				txn.BuyDepositNo = buy.DepositNo
 				txn.SellOrderID = sale.ID
+				txn.SellDepositNo = sale.DepositNo
 				txns = append(txns, txn)
 				jsonTxn, err := json.Marshal(txns)
 
@@ -150,11 +161,11 @@ func BuyHandler(buy *models.Order ) ([]byte, error) {
 		}
 	}
 
-	jsonOrder, err := json.Marshal(*buy)
+	jsonOrder, err := json.Marshal(buy)
 	v, err := c.Do("RPUSH", "simu-buy-list", jsonOrder)
 	if err != nil {
 		fmt.Printf(err.Error())
-	}else {
+	} else {
 		fmt.Printf("Redis Reply: %#v\n", v)
 	}
 	err = level.Put([]byte(buy.ID), jsonOrder, nil)
@@ -165,10 +176,10 @@ func BuyHandler(buy *models.Order ) ([]byte, error) {
 	return jsonTxn, err
 }
 
-func SellHandler(sell *models.Order ) ([]byte, error) {
+func SellHandler(sell models.Order) ([]byte, error) {
 
-	//level, err := leveldb.OpenFile("C:\\Database\\leveldb\\platform", nil)
-	level, err := leveldb.OpenFile("/root/wondervoyage/leveldb", nil)
+	level, err := leveldb.OpenFile("C:\\Database\\leveldb\\platform", nil)
+	//level, err := leveldb.OpenFile("/root/wondervoyage/leveldb", nil)
 	if err != nil {
 		panic(err)
 	}
@@ -178,20 +189,24 @@ func SellHandler(sell *models.Order ) ([]byte, error) {
 	     Query the Redis to check "Buy" list,  searching for the match selling order.
 	     If yes, update the status. if no, just push this buy order into the Redis buying list
 	***/
-	//c, err := redis.Dial("tcp", "192.168.1.4:6379")
-	c, err := redis.Dial("tcp", "redis:6379")
+	c, err := redis.Dial("tcp", "192.168.1.4:6379")
+	//c, err := redis.Dial("tcp", "redis:6379")
 	if err != nil {
 		panic(err)
 	}
 	defer c.Close()
 
-	txnId := uuid.Must(uuid.NewV4()).String()
-	txns  := make([]models.DealTxn, 0)
+	//txnId := uuid.Must(uuid.NewV4()).String()
+	txnId := uuid.NewV4().String()
+	txns := make([]models.DealTxn, 0)
 	st, err := redis.ByteSlices(c.Do("LRANGE", "simu-buy-list", 0, -1))
 	for i, o := range st {
 		var buy models.Order
 		err = json.Unmarshal(o, &buy)
 		//fmt.Printf("index %d    %#v\t%s\t%s\t%f\n", i, s, s.Id, s.Name, s.Height)
+		if sell.UserID == buy.UserID {
+			continue
+		}
 		if buy.Price >= sell.Price {
 			//price match , deal!!
 			fmt.Printf("Matching buying order : index %d\t%#v\n", i, buy)
@@ -200,12 +215,12 @@ func SellHandler(sell *models.Order ) ([]byte, error) {
 
 			remains := buy.Kwh - buy.KwhDealt
 			unfilled := sell.Kwh - sell.KwhDealt
-			if remains - unfilled < 0 {  //buy fulfilled, not sold out
+			if remains-unfilled < 0 { //buy fulfilled, not sold out
 				//remove this buy order from buy-list
 				v, err := c.Do("LREM", "simu-buy-list", 0, o)
 				if err != nil {
 					fmt.Printf(err.Error())
-				}else {
+				} else {
 					fmt.Printf("Redis Reply: %#v\n", v)
 				}
 				//then, update the state in the ledger
@@ -235,11 +250,13 @@ func SellHandler(sell *models.Order ) ([]byte, error) {
 				local, _ := time.LoadLocation("Local")
 				txn.TxnDate = time.Now().In(local)
 				txn.BuyOrderID = buy.ID
+				txn.BuyDepositNo = buy.DepositNo
 				txn.SellOrderID = sell.ID
+				txn.SellDepositNo = sell.DepositNo
 				txns = append(txns, txn)
 
 				continue
-			} else if remains - unfilled > 0 { //buy not-fulfilled, sold out
+			} else if remains-unfilled > 0 { //buy not-fulfilled, sold out
 				txn := models.DealTxn{}
 				txn.Kwh = unfilled
 				buy.KwhDealt = buy.KwhDealt + txn.Kwh
@@ -254,13 +271,13 @@ func SellHandler(sell *models.Order ) ([]byte, error) {
 				v, err = c.Do("RPUSH", "simu-buy-list", jsonBuy)
 				if err != nil {
 					fmt.Printf(err.Error())
-				}else {
+				} else {
 					fmt.Printf("Redis Reply: %#v\n", v)
 				}
 
 				sell.KwhDealt = sell.KwhDealt + txn.Kwh
 				sell.Status = 2
-				jsonOdr, err := json.Marshal(*sell)
+				jsonOdr, err := json.Marshal(sell)
 				err = level.Put([]byte(sell.ID), jsonOdr, nil)
 
 				//txn.ID = stub.GetTxID()
@@ -270,18 +287,20 @@ func SellHandler(sell *models.Order ) ([]byte, error) {
 				txn.Price = sell.Price
 				txn.TxnDate = time.Now().Local()
 				txn.BuyOrderID = buy.ID
+				txn.BuyDepositNo = buy.DepositNo
 				txn.SellOrderID = sell.ID
+				txn.SellDepositNo = sell.DepositNo
 				txns = append(txns, txn)
 				jsonTxn, err := json.Marshal(txns)
 
 				return jsonTxn, err
-			} else if remains - unfilled == 0 { //buy fulfilled, sold out
+			} else if remains-unfilled == 0 { //buy fulfilled, sold out
 				txn := models.DealTxn{}
 				//remove this buy order from buy-list
 				v, err := c.Do("LREM", "simu-buy-list", 0, o)
 				if err != nil {
 					fmt.Printf(err.Error())
-				}else {
+				} else {
 					fmt.Printf("Redis Reply: %#v\n", v)
 				}
 				//then, update the state in the ledger
@@ -293,7 +312,7 @@ func SellHandler(sell *models.Order ) ([]byte, error) {
 
 				sell.KwhDealt = sell.KwhDealt + txn.Kwh
 				sell.Status = 2
-				jsonOdr, err := json.Marshal(*sell)
+				jsonOdr, err := json.Marshal(sell)
 				err = level.Put([]byte(sell.ID), jsonOdr, nil)
 
 				txn.ID = txnId
@@ -303,7 +322,9 @@ func SellHandler(sell *models.Order ) ([]byte, error) {
 				local, _ := time.LoadLocation("Local")
 				txn.TxnDate = time.Now().In(local)
 				txn.BuyOrderID = buy.ID
+				txn.BuyDepositNo = buy.DepositNo
 				txn.SellOrderID = sell.ID
+				txn.SellDepositNo = sell.DepositNo
 				txns = append(txns, txn)
 				jsonTxn, err := json.Marshal(txns)
 
@@ -312,11 +333,11 @@ func SellHandler(sell *models.Order ) ([]byte, error) {
 		}
 	}
 
-	jsonOrder, err := json.Marshal(*sell)
+	jsonOrder, err := json.Marshal(sell)
 	v, err := c.Do("RPUSH", "simu-sell-list", jsonOrder)
 	if err != nil {
 		fmt.Printf(err.Error())
-	}else {
+	} else {
 		fmt.Printf("Redis Reply: %#v\n", v)
 	}
 	err = level.Put([]byte(sell.ID), jsonOrder, nil)

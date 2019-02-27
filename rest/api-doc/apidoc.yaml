@@ -1,0 +1,393 @@
+openapi: 3.0.0
+info:
+  title: Wondervoyage Backend API
+  description: >-
+    The platform frontend link <br/>
+    [www.wondervoyage.net](http://commonmark.org/help/)
+  version: 0.0.1
+servers:
+  - url: 'http://128.199.88.117:9080'
+    description: Docker testing server
+  - url: 'http://192.168.1.2:9080'
+    description: Internal staging server for testing
+paths:
+  /login:
+    post:
+      tags:
+        - Before Sign in
+      summary: user logs in with account and password
+      requestBody:
+        description: NO description
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                account:
+                  type: string
+                password:
+                  type: string
+              required:
+                - account
+                - password
+      responses:
+        '200':
+          description: OK. user logged in successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_id:
+                    type: integer
+                    description: The user ID.
+                    example: 15
+                  user_account:
+                    type: string
+                    description: The account name.
+                    example: davidwu
+                  token:
+                    type: string
+                    description: authorized jwt token
+                    example: >-
+                      eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50IjoiZ2FyeTk1IiwiYWRtaW4iOmZhbHNlLCJleHAiOjE1NDgwOTY0NDUsInVpZCI6Mn0.Z4WsjvM-PivlxV1PrlaOvInBkCdj7AVhEWrS85DZCO4
+        '401':
+          description: Unauthorized
+  /user/add:
+    post:
+      tags:
+        - Before Sign in
+      summary: create a new user
+      requestBody:
+        description: NO description
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                Account:
+                  type: string
+                Password:
+                  type: string
+                Name:
+                  type: string
+              required:
+                - Account
+                - Password
+      responses:
+        '200':
+          description: OK. A new user created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '415':
+          description: Unsupported Media Type
+  /platform/user/all:
+    get:
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      tags:
+        - Signed in
+      summary: Returns a list of users.
+      description: To add some description if needed.
+      responses:
+        '200':
+          description: A JSON array of user names
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+  '/platform/user/precords/{uid}':
+    get:
+      security:
+        - bearerAuth: []
+      tags:
+        - Signed in
+      summary: Get power records of a user by user-id
+      description: To add some description if needed.
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/uidParam'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PowerRecord'
+        '401':
+          description: invalid or expired jwt
+        '404':
+          description: Not found
+  '/platform/user/dashboard/{uid}':
+    get:
+      security:
+        - bearerAuth: []
+      tags:
+        - Signed in
+      summary: ''
+      description: Get the dashboard info of a user by user-id.
+      parameters:
+        - $ref: '#/components/parameters/uidParam'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  stocked:
+                    type: number
+                    format: float
+                    description: stocked kwh
+                    example: 100.25
+                  consumed:
+                    type: number
+                    format: float
+                    description: already consumed kwh
+                    example: 54.75
+                  on-sell:
+                    type: number
+                    format: float
+                    description: stocked kwh
+                    example: 15.05
+                  on-buy:
+                    type: number
+                    format: float
+                    description: stocked kwh
+                    example: 28
+        '401':
+          description: invalid or expired jwt
+        '404':
+          description: Not found
+  '/platform/order/{type}/{uid}':
+    get:
+      security:
+        - bearerAuth: []
+      tags:
+        - Signed in
+      summary: ''
+      description: Get the un-dealt orders of a user by user-id and by type.
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/uidParam'
+        - $ref: '#/components/parameters/typeParam'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+        '401':
+          description: invalid or expired jwt
+        '404':
+          description: Not found
+  /platform/order/add:
+    post:
+      security:
+        - bearerAuth: []
+      tags:
+        - Signed in  
+      summary: To place an order for buying or selling
+      description: ''
+      requestBody:
+        description: NO description
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                Type:
+                  type: integer
+                  enum:
+                    - 1
+                    - 2
+                Kwh:
+                  type: number
+                  format: float 
+                Price:
+                  type: number
+                  format: float
+                CreatedAt:
+                  type: string
+                  format: date-time 
+                  example: "2019-03-16T12:30:26Z"
+                ExpiredAt:
+                  type: string
+                  format: date-time 
+                  example: "2019-10-15T21:30:45Z"
+                Status:
+                  type: integer
+                  enum:
+                    - 1
+                UserID:
+                  type: integer
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DealTxn'
+        '401':
+          description: invalid or expired jwt
+        '404':
+          description: Not found
+      
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        ID:
+          type: integer
+        CreatedAt:
+          type: string
+          format: date-time
+        UpdatedAt:
+          type: string
+          format: date-time
+        DeletedAt:
+          type: string
+          format: date-time
+        Account:
+          type: string
+        Password:
+          type: string
+        Name:
+          type: string
+        Attributes:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserAttribute'
+        PowerRecords:
+          type: array
+          items:
+            $ref: '#/components/schemas/PowerRecord'
+    UserAttribute:
+      type: object
+      properties:
+        UserID:
+          type: integer
+        Email:
+          type: string
+          format: email
+        Address:
+          type: string
+        Phone:
+          type: string
+    PowerRecord:
+      type: object
+      properties:
+        KwhProduced:
+          type: number
+          format: float
+        KwhConsumed:
+          type: number
+          format: float
+        KwhStocked:
+          type: number
+          format: float
+        UpdatedAt:
+          type: string
+          format: date-time
+        UserID:
+          type: integer
+    Order:
+      type: object
+      properties:
+        ID:
+          type: string
+          format: uuid
+        Type:
+          type: integer
+        Kwh:
+          type: number
+          format: float
+        KwhDealt:
+          type: number
+          format: float
+        Price:
+          type: number
+          format: float
+        CreatedAt:
+          type: string
+          format: date-time
+        ExpiredAt:
+          type: string
+          format: date-time
+        Status:
+          type: integer
+        UserID:
+          type: integer
+    DealTxn:
+      type: object
+      properties:
+        ID:
+          type: string
+        Part:
+          type: integer
+        Kwh:
+          type: number
+          format: float
+        Price:
+          type: number
+          format: float
+        TxnDate:
+          type: string
+          format: date-time
+        BuyOrderID:
+          type: string
+          format: uuid
+        SellOrderID:
+          type: string
+          format: uuid
+  parameters:
+    uidParam:
+      name: uid
+      in: path
+      description: The user ID.
+      required: true
+      schema:
+        type: integer
+        format: int
+    typeParam:
+      name: type
+      in: path
+      description: buy or sell of order type.
+      required: true
+      schema:
+        type: string
+        enum:
+          - buy
+          - sell
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

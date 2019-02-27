@@ -1,16 +1,16 @@
 package models
 
 import (
-	"testing"
 	"fmt"
 	"strconv"
+	"testing"
 	"time"
 )
 
-const checkMark  = "\u2713"
-const balloX  = "\u2717"
+const checkMark = "\u2713"
+const balloX = "\u2717"
 
-func _TestAboutUser(t * testing.T) {
+func _TestAboutUser(t *testing.T) {
 
 	t.Log("Begin unit tests of model User")
 	//user := User{Account: "bruce.wu", Password: "0986", Attributes: []UserAttribute{}, PowerRecords: []PowerRecord{}}
@@ -20,7 +20,7 @@ func _TestAboutUser(t * testing.T) {
 	//}
 
 	users, c := AllUsers(2, 2)
-	fmt.Println("count: "+ strconv.Itoa(c))
+	fmt.Println("count: " + strconv.Itoa(c))
 	fmt.Printf("%+v\n", users)
 }
 
@@ -28,16 +28,17 @@ func _TestLoginCheck(t *testing.T) {
 	t.Log("Begin unit tests of model User")
 
 	_, logged := LoginCheck("gary.chang", "12345")
-	if logged{
+	if logged {
 		t.Log("User login success.", checkMark)
-	}else {
+	} else {
 		t.Error("Account not exists", balloX)
 	}
 }
 
 func _TestAddPowerRecord(t *testing.T) {
 	now := time.Now().Local()
-	pr := PowerRecord{KwhProduced: 7.5, KwhConsumed: 4.00, KwhStocked: 3.5, UpdatedAt: now, UserID: 2}
+	pr := PowerRecord{KwhProduced: 6.4, KwhConsumed: 2.3,
+		KwhStocked: 0, KwhSaleable: 0, UpdatedAt: now, UserID: 3, MeterID: "pm0003"}
 
 	if err := AddPowerRecord(pr); err != nil {
 		t.Error(err, balloX)
@@ -50,21 +51,26 @@ func _TestAddPowerRecord(t *testing.T) {
 func _TestAllPowerRecordsOfUser(t *testing.T) {
 
 	records, c := GetUserPowerRecords(2, 2, 2)
-	fmt.Println("count: "+ strconv.Itoa(c))
+	fmt.Println("count: " + strconv.Itoa(c))
 	for _, r := range records {
-		fmt.Printf("Stock: %g, Pro: %g, Date: %v\n",r.KwhStocked, r.KwhProduced, r.UpdatedAt)
+		fmt.Printf("Stock: %g, Pro: %g, Date: %v\n", r.KwhStocked, r.KwhProduced, r.UpdatedAt)
 	}
 }
 
 func _TestOrdersOfUser(t *testing.T) {
-	orders, c:= GetUserUndealtOrders(2, 1, 1, 2)
-	fmt.Println("count: "+ strconv.Itoa(c))
+	orders, c := GetUserUndealtOrders(2, 1, 1, 2)
+	fmt.Println("count: " + strconv.Itoa(c))
 	for _, r := range orders {
 		fmt.Printf("%+v\n", r)
 	}
 }
 
+func TestMeterDeposit(t *testing.T) {
+	//meter := GetSelectedMeterDeposit(3)
+	//meter := GetLatestMeterDeposit(3)
+	meters := GetUserMeters(2)
 
-
-
-
+	for _, m := range meters {
+		fmt.Printf("%+v\n", m)
+	}
+}
