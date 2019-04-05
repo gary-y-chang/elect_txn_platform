@@ -6,6 +6,7 @@ require (
 	github.com/golang/mock v1.2.0 // indirect
 	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/google/certificate-transparency-go v1.0.21 // indirect
+	github.com/gorilla/sessions v1.1.3
 	github.com/hyperledger/fabric-sdk-go v1.0.0-alpha4
 	github.com/jinzhu/gorm v1.9.2
 	github.com/jinzhu/inflection v0.0.0-20180308033659-04140366298a // indirect

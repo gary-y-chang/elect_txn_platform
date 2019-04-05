@@ -12,8 +12,8 @@ import (
 
 // return the Deposit involved. If two involved, [From_Deposit, To_Deposit]
 func Invoke(fn string, args []string) ([]byte, error) {
-	level, err := leveldb.OpenFile("C:\\Database\\leveldb\\platform", nil)
-	//level, err := leveldb.OpenFile("/root/wondervoyage/leveldb", nil)
+	//level, err := leveldb.OpenFile("C:\\Database\\leveldb\\platform", nil)
+	level, err := leveldb.OpenFile("/root/wondervoyage/leveldb", nil)
 	if err != nil {
 		panic(err)
 	}

@@ -8,6 +8,8 @@ services:
        # environment:
        #    - PGADMIN_DEFAULT_EMAIL=gary.chang.2.0@gmail.com
        #    - PGADMIN_DEFAULT_PASSWORD=n4925173
+        volumes:
+           - /root/wondervoyage/leveldb:/root/wondervoyage/leveldb
         depends_on:
            - pgdb
            - redis
@@ -30,7 +32,12 @@ services:
         container_name: platform_redis
         ports:
            - 6379:6379
-
+        command: redis-server --appendonly yes   
+#        volumes:
+#           - /root/redis/data:/data
+#           - /root/redis/config/redis.conf:/usr/local/etc/redis/redis.conf
+#        command: redis-server /usr/local/etc/redis/redis.conf 
+        
     apidoc:
         image: swaggerapi/swagger-ui
         container_name: swagger-ui

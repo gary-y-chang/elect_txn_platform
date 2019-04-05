@@ -14,7 +14,7 @@ paths:
   /login:
     post:
       tags:
-        - Before Sign in
+        - User Authentication
       summary: user logs in with account and password
       requestBody:
         description: NO description
@@ -54,10 +54,60 @@ paths:
                       eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50IjoiZ2FyeTk1IiwiYWRtaW4iOmZhbHNlLCJleHAiOjE1NDgwOTY0NDUsInVpZCI6Mn0.Z4WsjvM-PivlxV1PrlaOvInBkCdj7AVhEWrS85DZCO4
         '401':
           description: Unauthorized
-  /user/add:
+  /powerrec/add:
     post:
       tags:
-        - Before Sign in
+        - Un-Authentication
+      summary: 'adding power records by hand, no need to log-in'
+      requestBody:
+        description: NO description
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                KwhProduced:
+                  type: number
+                KwhConsumed:
+                  type: number
+                MeterID:
+                  type: string
+      responses:
+        '200':
+          description: OK. return the latest power rocord result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PowerRecord'
+        '401':
+          description: invalid or expired jwt
+        '404':
+          description: Not found
+  /admin/users/all:
+    get:
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+      tags:
+        - Admin
+      summary: Returns a list of users.
+      description: To add some description if needed.
+      responses:
+        '200':
+          description: A JSON array of user names
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+  /admin/users/add:
+    post:
+      tags:
+        - Admin
       summary: create a new user
       requestBody:
         description: NO description
@@ -85,42 +135,60 @@ paths:
                 $ref: '#/components/schemas/User'
         '415':
           description: Unsupported Media Type
-  /platform/user/all:
-    get:
-      parameters:
-        - in: query
-          name: page
-          schema:
-            type: integer
-      security:
-        - bearerAuth: []
+  /admin/meters/add:
+    post:
       tags:
-        - Signed in
-      summary: Returns a list of users.
-      description: To add some description if needed.
+        - Admin
+      summary: create a new meter with attached deposit
+      description: meter ID comes from the smart meter device
+      requestBody:
+        description: NO description
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                MeterID:
+                  type: string
+                MeterName:
+                  type: string
+                BankAccount:
+                  type: string
+                IsDefault:
+                  type: boolean
+                UserID:
+                  type: integer
+                OrgID:
+                  type: integer
+              required:
+                - MeterID
+                - MeterName
+                - UserID
+                - OrgID
       responses:
         '200':
-          description: A JSON array of user names
+          description: OK. A new meter created.
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/User'
-  '/platform/user/precords/{uid}':
+                $ref: '#/components/schemas/MeterDeposit'
+        '417':
+          description: Status Expectation Failed
+  /platform/user/precords/{meter_id}:
     get:
       security:
         - bearerAuth: []
       tags:
-        - Signed in
-      summary: Get power records of a user by user-id
+        - Platform
+      summary: Get power records by meter id
       description: To add some description if needed.
       parameters:
         - in: query
           name: page
           schema:
             type: integer
-        - $ref: '#/components/parameters/uidParam'
+        - $ref: '#/components/parameters/midParam'
       responses:
         '200':
           description: Successful operation
@@ -134,12 +202,12 @@ paths:
           description: invalid or expired jwt
         '404':
           description: Not found
-  '/platform/user/dashboard/{uid}':
+  /platform/user/dashboard/{uid}:
     get:
       security:
         - bearerAuth: []
       tags:
-        - Signed in
+        - Platform
       summary: ''
       description: Get the dashboard info of a user by user-id.
       parameters:
@@ -152,44 +220,195 @@ paths:
               schema:
                 type: object
                 properties:
-                  stocked:
+                  saleable:
                     type: number
                     format: float
                     description: stocked kwh
                     example: 100.25
-                  consumed:
+                  stocked:
                     type: number
                     format: float
                     description: already consumed kwh
                     example: 54.75
-                  on-sell:
+                  on_sell:
                     type: number
                     format: float
-                    description: stocked kwh
+                    description: kwh of un-dealt sell-orders
                     example: 15.05
-                  on-buy:
+                  on_buy:
                     type: number
                     format: float
-                    description: stocked kwh
+                    description: kwh of un-dealt buy-orders
                     example: 28
+                  meter_id:
+                    type: string
+                  meter_name:
+                    type: string
+                  deposit_no:
+                    type: string  
+                  balance:
+                    type: integer
         '401':
           description: invalid or expired jwt
         '404':
           description: Not found
-  '/platform/order/{type}/{uid}':
+  /platform/user/meters/{uid}:
     get:
       security:
         - bearerAuth: []
       tags:
-        - Signed in
+        - Platform
       summary: ''
-      description: Get the un-dealt orders of a user by user-id and by type.
+      description: Get all meters of a user by user-id
+      parameters:
+        - $ref: '#/components/parameters/uidParam'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MeterDeposit'
+        '401':
+          description: invalid or expired jwt
+        '404':
+          description: Not found
+  /platform/user/balance/{deposit_no}:
+    get:
+      security:
+        - bearerAuth: []
+      tags:
+        - Platform
+      summary: ''
+      description: Get the balance of a meter by deposit_no
+      parameters:
+        - in: path
+          name: deposit_no
+          required: true
+          description: the deposit number of a meter
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK. return the deposit balance of a meter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deposit'
+        '401':
+          description: invalid or expired jwt
+        '404':
+          description: Not found
+  /platform/user/balance/increase:
+    patch:
+      security:
+        - bearerAuth: []
+      tags:
+        - Platform
+      summary: ''
+      description: add value to the balance of a meter
+      requestBody:
+        description: NO description
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                DepositNo:
+                  type: string
+                Balance:
+                  type: number
+              required:
+                - DepositNo
+                - Balance
+      responses:
+        '200':
+          description: OK. value added successfully to a meter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deposit'
+        '401':
+          description: invalid or expired jwt
+        '404':
+          description: Not found
+  /platform/user/meter/switch:
+    patch:
+      security:
+        - bearerAuth: []
+      tags:
+        - Platform
+      summary: ''
+      description: change the current meter in use
+      requestBody:
+        description: NO description
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                MeterID:
+                  type: string
+              required:
+                - MeterID
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  saleable:
+                    type: number
+                    format: float
+                    description: stocked kwh
+                    example: 100.25
+                  stocked:
+                    type: number
+                    format: float
+                    description: already consumed kwh
+                    example: 54.75
+                  on_sell:
+                    type: number
+                    format: float
+                    description: kwh of un-dealt sell-orders
+                    example: 15.05
+                  on_buy:
+                    type: number
+                    format: float
+                    description: kwh of un-dealt buy-orders
+                    example: 28  
+                  meter_id:
+                    type: string
+                  meter_name:
+                    type: string
+                  deposit_no:
+                    type: string    
+                  balance:
+                    type: integer
+        '401':
+          description: invalid or expired jwt
+        '404':
+          description: Not found
+  /platform/order/{type}/{meter_id}:
+    get:
+      security:
+        - bearerAuth: []
+      tags:
+        - Platform
+      summary: ''
+      description: Get the un-dealt orders of a user by meter id and by type.
       parameters:
         - in: query
           name: page
           schema:
             type: integer
-        - $ref: '#/components/parameters/uidParam'
+        - $ref: '#/components/parameters/midParam'
         - $ref: '#/components/parameters/typeParam'
       responses:
         '200':
@@ -209,7 +428,7 @@ paths:
       security:
         - bearerAuth: []
       tags:
-        - Signed in  
+        - Platform
       summary: To place an order for buying or selling
       description: ''
       requestBody:
@@ -227,24 +446,18 @@ paths:
                     - 2
                 Kwh:
                   type: number
-                  format: float 
+                  format: float
                 Price:
                   type: number
                   format: float
                 CreatedAt:
                   type: string
-                  format: date-time 
-                  example: "2019-03-16T12:30:26Z"
+                  format: date-time
+                  example: '2019-03-16T12:30:26Z'
                 ExpiredAt:
                   type: string
-                  format: date-time 
-                  example: "2019-10-15T21:30:45Z"
-                Status:
-                  type: integer
-                  enum:
-                    - 1
-                UserID:
-                  type: integer
+                  format: date-time
+                  example: '2019-10-15T21:30:45Z'
       responses:
         '200':
           description: Successful operation
@@ -258,7 +471,6 @@ paths:
           description: invalid or expired jwt
         '404':
           description: Not found
-      
 components:
   schemas:
     User:
@@ -313,11 +525,14 @@ components:
         KwhStocked:
           type: number
           format: float
+        KwhSaleable:
+          type: number
+          format: float
         UpdatedAt:
           type: string
           format: date-time
-        UserID:
-          type: integer
+        MeterID:
+          type: string
     Order:
       type: object
       properties:
@@ -343,8 +558,10 @@ components:
           format: date-time
         Status:
           type: integer
-        UserID:
-          type: integer
+        MeterID:
+          type: string
+        DepositNo:
+          type: string
     DealTxn:
       type: object
       properties:
@@ -364,9 +581,55 @@ components:
         BuyOrderID:
           type: string
           format: uuid
+        BuyDeposiNo:
+          type: string
         SellOrderID:
           type: string
           format: uuid
+        SellDeposiNo:
+          type: string
+    MeterDeposit:
+      type: object
+      properties:
+        MeterID:
+          type: string
+        MeterName:
+          type: string
+        DepositNo:
+          type: string
+        BankAccount:
+          type: string
+        IsDefault:
+          type: boolean
+        UserID:
+          type: integer
+        OrgID:
+          type: integer
+        CreatedAt:
+          type: string
+          format: date-time
+        UpdatedAt:
+          type: string
+          format: date-time
+    Deposit:
+      type: object
+      properties:
+        DepositNo:
+          type: string
+        Balance:
+          type: number
+          format: float
+        Payable:
+          type: number
+          format: float
+        CreatedAt:
+          type: string
+          format: date-time
+        UpdatedAt:
+          type: string
+          format: date-time
+        UserID:
+          type: integer
   parameters:
     uidParam:
       name: uid
@@ -376,6 +639,13 @@ components:
       schema:
         type: integer
         format: int
+    midParam:
+      name: meter_id
+      in: path
+      description: The meter ID.
+      required: true
+      schema:
+        type: string
     typeParam:
       name: type
       in: path
