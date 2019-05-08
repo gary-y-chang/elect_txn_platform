@@ -9,12 +9,25 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/gomodule/redigo/redis"
 	"github.com/labstack/echo"
 	uuid "github.com/satori/go.uuid"
 	"gitlab.com/wondervoyage/platform/models"
 	"gitlab.com/wondervoyage/platform/simulation"
 )
+
+type orderQuery struct {
+	MeterID string `json:"meter_id"`
+	Tpe     uint8  `json:"type"`
+	Status  uint8  `json:"status"`
+	Begin   string `json:"begin"`
+	End     string `json:"end"`
+}
+
+type powerQuery struct {
+	MeterID string `json:"meter_id"`
+	Begin   string `json:"begin"`
+	End     string `json:"end"`
+}
 
 func home(c echo.Context) error {
 	return c.String(http.StatusOK, "Welcome Home !")
@@ -33,7 +46,7 @@ func createUser(c echo.Context) error {
 		return err
 	}
 
-	if err := models.AddUser(*u); err != nil {
+	if err := u.AddUser(); err != nil {
 		return err
 	}
 	return c.JSON(http.StatusOK, u)
@@ -115,12 +128,13 @@ func createOrder(c echo.Context) error {
 	//user := c.Get("user").(*jwt.Token)
 	//claims := user.Claims.(jwt.MapClaims)
 	//account := claims["account"].(string)
-	meterByte, _ := redis.Bytes(RedisConn.Do("HGET", "meter-in-use", account))
-	var meter models.MeterDeposit
-	json.Unmarshal(meterByte, &meter)
 
-	ord.DepositNo = meter.DepositNo
-	ord.MeterID = meter.MeterID
+	// meterByte, _ := redis.Bytes(RedisConn.Do("HGET", "meter-in-use", account))
+	// var meter models.MeterDeposit
+	// json.Unmarshal(meterByte, &meter)
+
+	ord.DepositNo = meterInUse[account].DepositNo
+	ord.MeterID = meterInUse[account].MeterID
 	ord.Status = 1
 	//ord.ID = uuid.Must(uuid.NewV4()).String()
 	ord.ID = uuid.NewV4().String()
@@ -138,7 +152,8 @@ func createOrder(c echo.Context) error {
 
 		var depo models.Deposit
 		json.Unmarshal(byteDeposit, &depo)
-		if depo.Balance < ord.Price*ord.Kwh {
+		payable := models.GetPayableByMeter(ord.MeterID)
+		if (depo.Balance - payable) < ord.Price*ord.Kwh {
 			return c.String(http.StatusInternalServerError, "no enough balance to buy")
 		}
 		//TODO:  invoke chaincode
@@ -161,8 +176,9 @@ func createOrder(c echo.Context) error {
 	} else if ord.Type == 2 { //sell
 		//  check the user's saleable power see if enough saleable power to sell
 		//if no, return error with "Stocked Power not enough." message
-		power := models.GetLatestPowerRecord(meter.MeterID)
-		if power.KwhSaleable < ord.Kwh {
+		reserved := models.GetReservedKwhByMeter(ord.MeterID)
+		power := models.GetLatestPowerSaleable(ord.MeterID)
+		if (power.KwhSaleable - reserved) < ord.Kwh {
 			return c.String(http.StatusInternalServerError, "no enough power for sale")
 		}
 		//TODO: invoke chaincode
@@ -236,17 +252,57 @@ func getAllUsers(c echo.Context) error {
 	})
 }
 
-func getPowerRecordsByMID(c echo.Context) error {
-	meterId := c.Param("meter_id")
+func getPowerAnalysis(c echo.Context) error {
+	// meterId := c.Param("meter_id")
 	// uid, err := strconv.Atoi(userId)
 	// if err != nil {
 	// 	return err
 	// }
+	q := new(powerQuery)
+	if err := c.Bind(q); err != nil {
+		return err
+	}
+	format := "2006-01-02"
+	begin, _ := time.Parse(format, q.Begin)
+	end, _ := time.Parse(format, q.End)
 	pp, _ := strconv.Atoi(c.QueryParam("page"))
-	records, count := models.GetPowerRecordsByMeter(meterId, pp, 10)
+
+	analysis, count := models.GetPowerAnalysis(q.MeterID, begin, end, pp, 10)
+	fmt.Printf("total %d -------------> %+v \n", count, analysis)
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"total":   count,
-		"records": records,
+		"summary": analysis,
+	})
+	// records, count := models.GetPowerRecordsByMeter(meterId, pp, 10)
+	// return c.JSON(http.StatusOK, map[string]interface{}{
+	// 	"total":   count,
+	// 	"records": records,
+	// })
+}
+
+func getOrdersByCondition(c echo.Context) error {
+	// tpe, _ := strconv.Atoi(c.FormValue("type"))
+	// status, _ := strconv.Atoi(c.FormValue("status"))
+
+	// format := "2006-01-02 15:04:05"
+	// begin, _ := time.Parse(format, c.FormValue("begin"))
+	// end, _ := time.Parse(format, c.FormValue("end"))
+	//account := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["account"].(string)
+	q := new(orderQuery)
+	if err := c.Bind(q); err != nil {
+		return err
+	}
+	format := "2006-01-02"
+	begin, _ := time.Parse(format, q.Begin)
+	end, _ := time.Parse(format, q.End)
+	pp, _ := strconv.Atoi(c.QueryParam("page"))
+
+	//orders, count := models.QueryOrders(uint8(tpe), uint8(status), begin, end, pp, 10)
+	orders, count := models.QueryOrders(q.Tpe, q.Status, q.MeterID, begin, end, pp, 10)
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"total":  count,
+		"orders": orders,
 	})
 }
 
@@ -260,7 +316,7 @@ func getUndealtOrdersByMID(c echo.Context) error {
 	case "sell":
 		tpe = 2
 	default:
-		return echo.NewHTTPError(http.StatusBadRequest, "URL parameter error, order/[buy/sell]/[uid]")
+		return echo.NewHTTPError(http.StatusBadRequest, "URL parameter error, order/[buy/sell]/[meter_id]")
 		//return errors.New("request parameter error, correct:[buy/sell]")
 	}
 
@@ -273,16 +329,6 @@ func getUndealtOrdersByMID(c echo.Context) error {
 }
 
 func getDashboardInfo(c echo.Context) error {
-	/*********************************************
-	session, err := store.Get(c.Request(), "ps1")
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, err)
-	}
-	fmt.Printf("Session in use :  %+v\n", session)
-	var meter models.MeterDeposit
-	json.Unmarshal([]byte(session.Values["meter-in-use"].(string)), &meter)
-	fmt.Printf("Meter in use :  %+v\n", meter)
-	************************************************/
 	account := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["account"].(string)
 	userid := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["uid"].(float64)
 	//user := c.Get("user").(*jwt.Token)
@@ -292,11 +338,7 @@ func getDashboardInfo(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "rest path parameter uid not matching token user id")
 	}
 
-	meterByte, _ := redis.Bytes(RedisConn.Do("HGET", "meter-in-use", account))
-	var meter models.MeterDeposit
-	json.Unmarshal(meterByte, &meter)
-	fmt.Printf("Meter in use :  %+v\n", meter)
-
+	meter := meterInUse[account]
 	args := []string{meter.DepositNo}
 	byteDeposit, err := simulation.Invoke("query", args)
 	//TODO: invoke chaincode
@@ -314,11 +356,12 @@ func getDashboardInfo(c echo.Context) error {
 
 	buyKwh := models.GetUndealtKwhByMeter(meter.MeterID, 1)
 	sellKwh := models.GetUndealtKwhByMeter(meter.MeterID, 2)
-	prd := models.GetLatestPowerRecord(meter.MeterID)
+	saleable := models.GetLatestPowerSaleable(meterInUse[account].MeterID)
+	stock := models.GetLatestPowerStocked(meterInUse[account].MeterID)
 
 	return c.JSON(http.StatusOK, map[string]string{
-		"saleable":   fmt.Sprintf("%.2f", prd.KwhSaleable),
-		"stocked":    fmt.Sprintf("%.2f", prd.KwhStocked),
+		"saleable":   fmt.Sprintf("%.2f", saleable.KwhSaleable),
+		"stocked":    fmt.Sprintf("%.2f", stock.KwhStocked),
 		"on_sell":    fmt.Sprintf("%.2f", sellKwh),
 		"on_buy":     fmt.Sprintf("%.2f", buyKwh),
 		"meter_id":   meter.MeterID,
@@ -373,20 +416,6 @@ func addValueToBalance(c echo.Context) error {
 
 	json.Unmarshal(byteDeposit, depo)
 
-	/********************************************************************************
-		session, err := store.Get(c.Request(), "ps1")
-		if err != nil {
-			return c.JSON(http.StatusBadRequest, err.Error())
-		}
-		var meter models.MeterDeposit
-		json.Unmarshal([]byte(session.Values["meter-in-use"].(string)), &meter)
-	    *********************************************************************************/
-
-	// account := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["account"].(string)
-	// meterByte, _:= redis.Bytes(RedisConn.Do("HGET", "meter-in-use", account))
-	// var meter models.MeterDeposit
-	// json.Unmarshal(meterByte, &meter)
-
 	now := currentLocalTime()
 	//prepare  DepositRecord
 	rec := models.DepositRecord{depo.DepositNo, depo.UserID, "add value to deposit", plus, depo.Balance, plus, "Deposit No.: " + depo.DepositNo, now}
@@ -398,31 +427,15 @@ func addValueToBalance(c echo.Context) error {
 }
 
 func switchMeterInUse(c echo.Context) error {
+	account := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["account"].(string)
+
 	m := new(models.MeterDeposit)
 	if err := c.Bind(m); err != nil {
 		return err
 	}
-	meter := models.GetMeterDepositByID(m.MeterID)
-	jsonMeter, err := json.Marshal(meter)
 
-	account := c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["account"].(string)
-	RedisConn.Do("HSET", "meter-in-use", account, jsonMeter)
-
-	/*****************************************************
-		session, err := store.Get(c.Request(), "ps1")
-		if err != nil {
-			return c.JSON(http.StatusBadRequest, err)
-		}
-		fmt.Printf("Session in use :  %+v\n", session)
-
-		jsonMeter, err := json.Marshal(*meter)
-		if err != nil {
-			return err
-		}
-		session.Values["meter-in-use"] = string(jsonMeter)
-	    *******************************************************/
-
-	args := []string{meter.DepositNo}
+	meterInUse[account] = models.GetMeterDepositByID(m.MeterID)
+	args := []string{meterInUse[account].DepositNo}
 	byteDeposit, err := simulation.Invoke("query", args)
 	//TODO: invoke chaincode get Balance
 	//byteDeposit, err := chaincaller.Balance("query", meter.DepositNo)
@@ -432,19 +445,21 @@ func switchMeterInUse(c echo.Context) error {
 	var depo models.Deposit
 	json.Unmarshal(byteDeposit, &depo)
 
-	buyKwh := models.GetUndealtKwhByMeter(meter.MeterID, 1)
-	sellKwh := models.GetUndealtKwhByMeter(meter.MeterID, 2)
-	prd := models.GetLatestPowerRecord(meter.MeterID)
+	buyKwh := models.GetUndealtKwhByMeter(meterInUse[account].MeterID, 1)
+	sellKwh := models.GetUndealtKwhByMeter(meterInUse[account].MeterID, 2)
+	saleable := models.GetLatestPowerSaleable(meterInUse[account].MeterID)
+	stock := models.GetLatestPowerStocked(meterInUse[account].MeterID)
+	//prd := models.GetLatestPowerRecord(meterInUse[account].MeterID)
 	//return c.JSON(http.StatusOK, *meter)
 
 	return c.JSON(http.StatusOK, map[string]string{
-		"saleable":   fmt.Sprintf("%.2f", prd.KwhSaleable),
-		"stocked":    fmt.Sprintf("%.2f", prd.KwhStocked),
+		"saleable":   fmt.Sprintf("%.2f", saleable.KwhSaleable),
+		"stocked":    fmt.Sprintf("%.2f", stock.KwhStocked),
 		"on_sell":    fmt.Sprintf("%.2f", sellKwh),
 		"on_buy":     fmt.Sprintf("%.2f", buyKwh),
-		"meter_id":   meter.MeterID,
-		"meter_name": meter.MeterName,
-		"deposit_no": meter.DepositNo,
+		"meter_id":   meterInUse[account].MeterID,
+		"meter_name": meterInUse[account].MeterName,
+		"deposit_no": meterInUse[account].DepositNo,
 		"balance":    fmt.Sprintf("%.1f", depo.Balance)})
 }
 
@@ -473,29 +488,7 @@ func login(c echo.Context) error {
 			return err
 		}
 
-		meter := models.GetDefaultMeterDeposit(u.ID)
-		jsonMeter, err := json.Marshal(meter)
-		if err != nil {
-			return err
-		}
-
-		RedisConn.Do("HSET", "meter-in-use", u.Account, jsonMeter)
-
-		/**********************************************
-				session, err := store.Get(c.Request(), "ps1")
-				if err != nil {
-					return c.JSON(http.StatusBadRequest, err)
-				}
-
-				session.Values["meter-in-use"] = string(jsonMeter)
-				//session.Values["deposit-no"] = meter.DepositNo
-				err = store.Save(c.Request(), c.Response().Writer, session)
-				if err != nil {
-					fmt.Printf(err.Error())
-				}
-				fmt.Printf("Session in use :  %+v\n", session)
-		        ************************************************/
-
+		meterInUse[u.Account] = models.GetDefaultMeterDeposit(u.ID)
 		c.Response().Header().Set("Cache-Control", "no-cache")
 		return c.JSON(http.StatusOK, map[string]string{
 			"user_id":      strconv.Itoa(int(u.Model.ID)),
@@ -508,7 +501,12 @@ func login(c echo.Context) error {
 }
 
 func addPowerRecord(c echo.Context) error {
-	pwr := new(models.PowerRecord)
+	type powerRec struct {
+		KwhProduced float64
+		KwhConsumed float64
+		MeterID     string
+	}
+	pwr := new(powerRec)
 	if err := c.Bind(pwr); err != nil {
 		return err
 	}
@@ -517,9 +515,7 @@ func addPowerRecord(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "MeterID can not be empty")
 	}
 
-	//now := time.Now().UTC().Add(8*time.Hour)
-	pwr.UpdatedAt = currentLocalTime()
-	pwr, err := models.AddPowerRecord(pwr)
+	err := models.AddPowerRecord(pwr.KwhProduced, pwr.KwhConsumed, pwr.MeterID)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}

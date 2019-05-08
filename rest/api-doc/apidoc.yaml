@@ -175,20 +175,32 @@ paths:
                 $ref: '#/components/schemas/MeterDeposit'
         '417':
           description: Status Expectation Failed
-  /platform/user/precords/{meter_id}:
-    get:
+  '/platform/user/pwrrecords/query':
+    post:
       security:
         - bearerAuth: []
       tags:
         - Platform
-      summary: Get power records by meter id
-      description: To add some description if needed.
-      parameters:
-        - in: query
-          name: page
-          schema:
-            type: integer
-        - $ref: '#/components/parameters/midParam'
+      summary: Get power analysis during the time period
+      description: ''
+      requestBody:
+        description: NO description
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                meter_id:
+                  type: string
+                begin:
+                  type: string
+                  format: date-time
+                  example: '2019-03-16'
+                end:
+                  type: string
+                  format: date-time
+                  example: '2019-10-15'
       responses:
         '200':
           description: Successful operation
@@ -197,12 +209,12 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/PowerRecord'
+                  $ref: '#/components/schemas/PowerAnalysis'
         '401':
           description: invalid or expired jwt
         '404':
           description: Not found
-  /platform/user/dashboard/{uid}:
+  '/platform/user/dashboard/{uid}':
     get:
       security:
         - bearerAuth: []
@@ -245,14 +257,14 @@ paths:
                   meter_name:
                     type: string
                   deposit_no:
-                    type: string  
+                    type: string
                   balance:
                     type: integer
         '401':
           description: invalid or expired jwt
         '404':
           description: Not found
-  /platform/user/meters/{uid}:
+  '/platform/user/meters/{uid}':
     get:
       security:
         - bearerAuth: []
@@ -275,7 +287,7 @@ paths:
           description: invalid or expired jwt
         '404':
           description: Not found
-  /platform/user/balance/{deposit_no}:
+  '/platform/user/balance/{deposit_no}':
     get:
       security:
         - bearerAuth: []
@@ -382,20 +394,20 @@ paths:
                     type: number
                     format: float
                     description: kwh of un-dealt buy-orders
-                    example: 28  
+                    example: 28
                   meter_id:
                     type: string
                   meter_name:
                     type: string
                   deposit_no:
-                    type: string    
+                    type: string
                   balance:
                     type: integer
         '401':
           description: invalid or expired jwt
         '404':
           description: Not found
-  /platform/order/{type}/{meter_id}:
+  '/platform/order/{type}/{meter_id}':
     get:
       security:
         - bearerAuth: []
@@ -467,6 +479,62 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/DealTxn'
+        '401':
+          description: invalid or expired jwt
+        '404':
+          description: Not found
+  /platform/order/query:
+    post:
+      security:
+        - bearerAuth: []
+      tags:
+        - Platform
+      summary: To query orders by the json condition
+      description: ''
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+      requestBody:
+        description: NO description
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                meter_id:
+                  type: string
+                type:
+                  type: integer
+                  enum:
+                    - 1
+                    - 2
+                status:
+                  type: integer
+                  enum:
+                    - 1
+                    - 2
+                    - 3
+                    - 4
+                begin:
+                  type: string
+                  format: date-time
+                  example: '2019-03-16'
+                end:
+                  type: string
+                  format: date-time
+                  example: '2019-10-15'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
         '401':
           description: invalid or expired jwt
         '404':
@@ -630,6 +698,53 @@ components:
           format: date-time
         UserID:
           type: integer
+    PowerAnalysis:
+        type: object
+        properties:
+          Summary:
+            type: object
+            properties:
+              TotalProduced:
+                type: number
+                format: float
+              TotalConsumed:
+                type: number
+                format: float
+              AvgProduced:
+                type: number
+                format: float
+              AvgConsumed:
+                type: number
+                format: float
+              TotalSold:
+                type: number
+                format: float
+              TotalBought:
+                type: number
+                format: float
+              Analyses:  
+                type: array
+                items:
+                  $ref: '#/components/schemas/PowerData'
+    PowerData:
+      type: object
+      properties:
+        Date:
+          type: string
+          format: date-time
+        Produced:
+          type: number
+          format: float
+        Consumed:
+          type: number
+          format: float
+        Sold:
+          type: number
+          format: float
+        Bought:
+          type: number
+          format: float
+    
   parameters:
     uidParam:
       name: uid
@@ -656,6 +771,7 @@ components:
         enum:
           - buy
           - sell
+  
   securitySchemes:
     bearerAuth:
       type: http

@@ -5,17 +5,17 @@ services:
         container_name: platform
         ports:
            - 9080:9080
-       # environment:
-       #    - PGADMIN_DEFAULT_EMAIL=gary.chang.2.0@gmail.com
-       #    - PGADMIN_DEFAULT_PASSWORD=n4925173
+        environment:
+           - PLATFORM_ENV=container
+           - PLATFORM_CONFIGPATH=/goapp/env-config.yaml
         volumes:
            - /root/wondervoyage/leveldb:/root/wondervoyage/leveldb
         depends_on:
            - pgdb
-           - redis
+       #   - redis
         links:
            - pgdb
-           - redis
+       #   - redis
            
     pgdb:
         image: postgres:10.5   
@@ -26,13 +26,15 @@ services:
            - POSTGRES_USER=platformer
            - POSTGRES_PASSWORD=postgres
            - POSTGRES_DB=platform_db
+        volumes:
+           - /root/wondervoyage/postgres-data:/var/lib/postgresql/data   
 
-    redis:
-        image: redis:5.0
-        container_name: platform_redis
-        ports:
-           - 6379:6379
-        command: redis-server --appendonly yes   
+#    redis:
+#        image: redis:5.0
+#        container_name: platform_redis
+#        ports:
+#           - 6379:6379
+#        command: redis-server --appendonly yes   
 #        volumes:
 #           - /root/redis/data:/data
 #           - /root/redis/config/redis.conf:/usr/local/etc/redis/redis.conf

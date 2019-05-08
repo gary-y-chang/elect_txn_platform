@@ -8,6 +8,7 @@ import (
 	"github.com/hyperledger/fabric-sdk-go/pkg/client/channel"
 	"github.com/hyperledger/fabric-sdk-go/pkg/core/config"
 	"github.com/hyperledger/fabric-sdk-go/pkg/fabsdk"
+	"gitlab.com/wondervoyage/platform/configs"
 	"gitlab.com/wondervoyage/platform/models"
 )
 
@@ -16,9 +17,10 @@ var SDK *fabsdk.FabricSDK
 func init() {
 	var err error
 	//configProvider := config.FromFile("./config.yaml")
+	SDK, err = fabsdk.New(config.FromFile(configs.Env.FabricPath))
 	//SDK, err = fabsdk.New(config.FromFile("./configs/fabric/local/config.yaml"))
 	//SDK, err = fabsdk.New(config.FromFile("./configs/fabric/staging/config.yaml"))
-	SDK, err = fabsdk.New(config.FromFile("/goapp/fabric/config.yaml"))
+	//SDK, err = fabsdk.New(config.FromFile("/goapp/fabric/config.yaml"))
 	if err != nil {
 		log.Fatalf("create sdk fail: %s\n", err.Error())
 	}

@@ -7,20 +7,36 @@ import (
 	"time"
 
 	"github.com/syndtr/goleveldb/leveldb"
-	"gitlab.com/wondervoyage/platform/models"
+	"gitlab.com/wondervoyage/platform/configs"
 )
+
+type Deposit struct {
+	DepositNo string
+	Balance   float64
+	Payable   float64
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	UserID    uint
+}
+
+type BalanceTxn struct {
+	Target string  // the deposit_no to input
+	Source string  // the deposit_no to output
+	Amount float64 // the $$
+}
 
 // return the Deposit involved. If two involved, [From_Deposit, To_Deposit]
 func Invoke(fn string, args []string) ([]byte, error) {
-	//level, err := leveldb.OpenFile("C:\\Database\\leveldb\\platform", nil)
-	level, err := leveldb.OpenFile("/root/wondervoyage/leveldb", nil)
+
+	level, err := leveldb.OpenFile(configs.Env.LeveldbPath, nil)
+	//level, err := leveldb.OpenFile("/root/wondervoyage/leveldb", nil)
 	if err != nil {
 		panic(err)
 	}
 	defer level.Close()
 
-	var txn models.BalanceTxn
-	var depos models.Deposit
+	var txn BalanceTxn
+	var depos Deposit
 	if fn == "query" {
 		fmt.Printf("Query for deposit no.: %s\n", args[0])
 	} else if fn == "create" {
@@ -71,7 +87,7 @@ func Invoke(fn string, args []string) ([]byte, error) {
 	return []byte(result), err
 }
 
-func create(level *leveldb.DB, depos *models.Deposit) (string, error) {
+func create(level *leveldb.DB, depos *Deposit) (string, error) {
 	//local, _ := time.LoadLocation("Local")
 	//now := time.Now().In(local)
 	//userId, _ := strconv.ParseUint(uid, 10, 64)
@@ -84,7 +100,7 @@ func create(level *leveldb.DB, depos *models.Deposit) (string, error) {
 	return string(jsonDepo), nil
 }
 
-func detain(level *leveldb.DB, txn *models.BalanceTxn) (string, error) {
+func detain(level *leveldb.DB, txn *BalanceTxn) (string, error) {
 
 	//byteDeposit, err := stub.GetState(txn.Target)
 	byteDeposit, err := level.Get([]byte(txn.Target), nil)
@@ -93,7 +109,7 @@ func detain(level *leveldb.DB, txn *models.BalanceTxn) (string, error) {
 	} else if byteDeposit == nil {
 		return "{\"Error\":\"Deposit: " + txn.Target + " does not exist.\"}", err
 	}
-	var depo models.Deposit
+	var depo Deposit
 	json.Unmarshal(byteDeposit, &depo)
 
 	depo.Balance = depo.Balance - txn.Amount
@@ -109,7 +125,7 @@ func detain(level *leveldb.DB, txn *models.BalanceTxn) (string, error) {
 	return string(jsonDepo), nil
 }
 
-func transfer(level *leveldb.DB, txn *models.BalanceTxn) (string, error) {
+func transfer(level *leveldb.DB, txn *BalanceTxn) (string, error) {
 	//byteTarget, err :=stub.GetState(txn.Target)
 	byteTarget, err := level.Get([]byte(txn.Target), nil)
 	if err != nil {
@@ -117,7 +133,7 @@ func transfer(level *leveldb.DB, txn *models.BalanceTxn) (string, error) {
 	} else if byteTarget == nil {
 		return "{\"Error\":\"Deposit: " + txn.Target + " does not exist.\"}", err
 	}
-	var depoTarget models.Deposit
+	var depoTarget Deposit
 	json.Unmarshal(byteTarget, &depoTarget)
 
 	//byteSource, err :=stub.GetState(txn.Source)
@@ -127,7 +143,7 @@ func transfer(level *leveldb.DB, txn *models.BalanceTxn) (string, error) {
 	} else if byteTarget == nil {
 		return "{\"Error\":\"Deposit: " + txn.Source + " does not exist.\"}", err
 	}
-	var depoSource models.Deposit
+	var depoSource Deposit
 	json.Unmarshal(byteSource, &depoSource)
 
 	local, _ := time.LoadLocation("Local")
@@ -151,13 +167,13 @@ func transfer(level *leveldb.DB, txn *models.BalanceTxn) (string, error) {
 		return "{\"Error\":\"Wrong balance update of Deposit: " + txn.Source + "\"}", err
 	}
 
-	result := make([]models.Deposit, 0)
+	result := make([]Deposit, 0)
 	result = append(result, depoSource, depoTarget)
 	jsonResult, _ := json.Marshal(result)
 	return string(jsonResult), nil
 }
 
-func payOrder(level *leveldb.DB, txn *models.BalanceTxn) (string, error) {
+func payOrder(level *leveldb.DB, txn *BalanceTxn) (string, error) {
 	//byteTarget, err :=stub.GetState(txn.Target)
 	byteTarget, err := level.Get([]byte(txn.Target), nil)
 	if err != nil {
@@ -165,7 +181,7 @@ func payOrder(level *leveldb.DB, txn *models.BalanceTxn) (string, error) {
 	} else if byteTarget == nil {
 		return "{\"Error\":\"Deposit: " + txn.Target + " does not exist.\"}", err
 	}
-	var depoTarget models.Deposit
+	var depoTarget Deposit
 	json.Unmarshal(byteTarget, &depoTarget)
 
 	//byteSource, err :=stub.GetState(txn.Source)
@@ -175,7 +191,7 @@ func payOrder(level *leveldb.DB, txn *models.BalanceTxn) (string, error) {
 	} else if byteTarget == nil {
 		return "{\"Error\":\"Deposit: " + txn.Source + " does not exist.\"}", err
 	}
-	var depoSource models.Deposit
+	var depoSource Deposit
 	json.Unmarshal(byteSource, &depoSource)
 
 	local, _ := time.LoadLocation("Local")
@@ -199,13 +215,13 @@ func payOrder(level *leveldb.DB, txn *models.BalanceTxn) (string, error) {
 		return "{\"Error\":\"Wrong balance update of Deposit: " + txn.Source + "\"}", err
 	}
 
-	result := make([]models.Deposit, 0)
+	result := make([]Deposit, 0)
 	result = append(result, depoSource, depoTarget)
 	jsonResult, _ := json.Marshal(result)
 	return string(jsonResult), nil
 }
 
-func deposit(level *leveldb.DB, txn *models.BalanceTxn) (string, error) {
+func deposit(level *leveldb.DB, txn *BalanceTxn) (string, error) {
 	//byteTarget, err :=stub.GetState(txn.Target)
 	byteTarget, err := level.Get([]byte(txn.Target), nil)
 	if err != nil {
@@ -213,7 +229,7 @@ func deposit(level *leveldb.DB, txn *models.BalanceTxn) (string, error) {
 	} else if byteTarget == nil {
 		return "{\"Error\":\"Deposit: " + txn.Target + " does not exist.\"}", err
 	}
-	var depo models.Deposit
+	var depo Deposit
 	json.Unmarshal(byteTarget, &depo)
 
 	depo.Balance = depo.Balance + txn.Amount
@@ -230,7 +246,7 @@ func deposit(level *leveldb.DB, txn *models.BalanceTxn) (string, error) {
 
 }
 
-func withdraw(level *leveldb.DB, txn *models.BalanceTxn) (string, error) {
+func withdraw(level *leveldb.DB, txn *BalanceTxn) (string, error) {
 	//byteTarget, err := stub.GetState(txn.Target)
 	byteTarget, err := level.Get([]byte(txn.Target), nil)
 	if err != nil {
@@ -238,7 +254,7 @@ func withdraw(level *leveldb.DB, txn *models.BalanceTxn) (string, error) {
 	} else if byteTarget == nil {
 		return "{\"Error\":\"Deposit: " + txn.Target + " does not exist.\"}", err
 	}
-	var depo models.Deposit
+	var depo Deposit
 	json.Unmarshal(byteTarget, &depo)
 
 	depo.Balance = depo.Balance - txn.Amount

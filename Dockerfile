@@ -11,6 +11,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install
 FROM alpine
 WORKDIR /goapp
 ADD ./rest/api-doc/apidoc.yaml /goapp/apidoc.yaml
+ADD ./configs/env-config.yaml /goapp/env-config.yaml
 ADD ./configs/fabric/staging/config-docker.yaml /goapp/fabric/config.yaml
 ADD ./configs/fabric/staging/crypto-config/ /goapp/fabric/crypto-config/
 COPY --from=build-env /go/bin/platform /goapp

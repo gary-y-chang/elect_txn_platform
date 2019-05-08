@@ -7,22 +7,23 @@ import (
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
+	"gitlab.com/wondervoyage/platform/configs"
 )
 
-type User struct {
-	gorm.Model
-	Account    string `gorm:"unique;not null"`
-	Password   string `gorm:"not null"`
-	Name       string
-	Attributes []UserAttribute
-}
+// type User struct {
+// 	gorm.Model
+// 	Account    string `gorm:"unique;not null"`
+// 	Password   string `gorm:"not null"`
+// 	Name       string
+// 	Attributes []UserAttribute
+// }
 
-type UserAttribute struct {
-	UserID  uint
-	Email   string
-	Address string
-	Phone   string
-}
+// type UserAttribute struct {
+// 	UserID  uint
+// 	Email   string
+// 	Address string
+// 	Phone   string
+// }
 
 type MeterDeposit struct {
 	MeterID     string `gorm:"primary_key;not null"` // the smart meter ID
@@ -36,14 +37,28 @@ type MeterDeposit struct {
 	UpdatedAt   time.Time
 }
 
-type PowerRecord struct {
-	KwhProduced float64 // power kwh produced and saved to 儲能櫃 during a time period, not accumulated
-	KwhConsumed float64 // power kwh consumed from 儲能櫃 during a time period, not accumulated
-	KwhStocked  float64 // power kwh accumulated from buy-order, stocked = stocked - consumed
-	KwhSaleable float64 // power kwh accumulated from produced, saleable = saleable + produced
-	UpdatedAt   time.Time
-	MeterID     string `gorm:"not null"`
-}
+// type PowerRecord struct {
+// 	KwhProduced float64 // power kwh produced and saved to 儲能櫃 during a time period, not accumulated
+// 	KwhConsumed float64 // power kwh consumed from 儲能櫃 during a time period, not accumulated
+// 	KwhStocked  float64 // power kwh accumulated from buy-order, stocked = stocked - consumed
+// 	KwhSaleable float64 // power kwh accumulated from produced, saleable = saleable + produced
+// 	UpdatedAt   time.Time
+// 	MeterID     string `gorm:"not null"`
+// }
+
+// type PowerStocked struct {
+// 	KwhConsumed float64 // power kwh consumed from 儲能櫃 during a time period, not accumulated
+// 	KwhStocked  float64 // power kwh accumulated from buy-order, stocked = stocked - consumed
+// 	UpdatedAt   time.Time
+// 	MeterID     string `gorm:"not null"`
+// }
+
+// type PowerSaleable struct {
+// 	KwhProduced float64 // power kwh produced and saved to 儲能櫃 during a time period, not accumulated
+// 	KwhSaleable float64 // power kwh accumulated from produced, saleable = saleable + produced
+// 	UpdatedAt   time.Time
+// 	MeterID     string `gorm:"not null"`
+// }
 
 /*** e.g
 { "kwh": 25.5,
@@ -53,31 +68,31 @@ type PowerRecord struct {
   "user-id": 2
 }
  **/
-type Order struct {
-	ID        string  // UUID           timestamp := time.Now().Unix()
-	Type      uint8   // 1:buy, 2:sell
-	Kwh       float64 // Kwh to be sold
-	KwhDealt  float64 // Kwh already sold
-	Price     float64
-	CreatedAt time.Time
-	ExpiredAt time.Time
-	Status    uint8 //1:un-dealt, 2:dealt, 3:expired, 4:canceled
-	MeterID   string
-	DepositNo string
-}
+// type Order struct {
+// 	ID        string  // UUID           timestamp := time.Now().Unix()
+// 	Type      uint8   // 1:buy, 2:sell
+// 	Kwh       float64 // Kwh to be sold
+// 	KwhDealt  float64 // Kwh already sold
+// 	Price     float64
+// 	CreatedAt time.Time
+// 	ExpiredAt time.Time
+// 	Status    uint8 //1:un-dealt, 2:dealt, 3:expired, 4:canceled
+// 	MeterID   string
+// 	DepositNo string
+// }
 
-type OrderBoard struct {
-	ID        string  // UUID           timestamp := time.Now().Unix()
-	Type      uint8   // 1:buy, 2:sell
-	Kwh       float64 // Kwh to be sold
-	KwhDealt  float64 // Kwh already sold
-	Price     float64
-	CreatedAt time.Time
-	ExpiredAt time.Time
-	Status    uint8 //1:un-dealt, 2:dealt, 3:expired, 4:canceled
-	MeterID   string
-	DepositNo string
-}
+// type OrderBoard struct {
+// 	ID        string  // UUID           timestamp := time.Now().Unix()
+// 	Type      uint8   // 1:buy, 2:sell
+// 	Kwh       float64 // Kwh to be sold
+// 	KwhDealt  float64 // Kwh already sold
+// 	Price     float64
+// 	CreatedAt time.Time
+// 	ExpiredAt time.Time
+// 	Status    uint8 //1:un-dealt, 2:dealt, 3:expired, 4:canceled
+// 	MeterID   string
+// 	DepositNo string
+// }
 
 type DealTxn struct {
 	ID            string `gorm:"primary_key"` // transaction id from chaincode
@@ -87,8 +102,10 @@ type DealTxn struct {
 	TxnDate       time.Time // display format 2018-11-20 23:45
 	BuyOrderID    string    // order id
 	BuyDepositNo  string
+	BuyMeterID    string
 	SellOrderID   string // order id
 	SellDepositNo string
+	SellMeterID   string
 }
 
 type DepositRecord struct {
@@ -102,7 +119,7 @@ type DepositRecord struct {
 	RecDate   time.Time
 }
 
-//  for use on chaincode
+// use in the chaincode
 type Deposit struct {
 	DepositNo string
 	Balance   float64
@@ -112,7 +129,7 @@ type Deposit struct {
 	UserID    uint
 }
 
-// for use on chaincode
+// use in the chaincode
 type BalanceTxn struct {
 	Target string  // the deposit_no to input
 	Source string  // the deposit_no to output
@@ -122,25 +139,31 @@ type BalanceTxn struct {
 var DB *gorm.DB
 
 func init() {
+
+	con := fmt.Sprintf("host=%s port=%s user=%s dbname=%s password=%s sslmode=disable",
+		configs.Env.DBhost, configs.Env.DBport, configs.Env.DBuser, configs.Env.DBname, configs.Env.Dbpasswd)
+
 	var err error
+	DB, err = gorm.Open("postgres", con)
+
 	//DB, err = gorm.Open("postgres", "host=128.199.88.117 port=15432 user=platformer dbname=platform_db password=postgres sslmode=disable")
 	//DB, err = gorm.Open("postgres", "host=192.168.1.4 port=15432 user=platformer dbname=platform_db password=postgres sslmode=disable")
-	DB, err = gorm.Open("postgres", "host=pgdb port=5432 user=platformer dbname=platform_db password=postgres sslmode=disable")
+	//DB, err = gorm.Open("postgres", "host=pgdb port=5432 user=platformer dbname=platform_db password=postgres sslmode=disable")
 	if err != nil {
 		panic(err)
 	}
 
 	DB.LogMode(true)
 	DB.SingularTable(true)
-	DB.AutoMigrate(&User{}, &UserAttribute{}, &PowerRecord{}, &Order{}, &OrderBoard{}, &DealTxn{}, &DepositRecord{}, &MeterDeposit{})
+	DB.AutoMigrate(&User{}, &UserAttribute{}, &PowerStocked{}, &PowerSaleable{}, &Order{}, &OrderBoard{}, &DealTxn{}, &DepositRecord{}, &MeterDeposit{})
 }
 
-func AddUser(u User) error {
-	if DB.Create(&u).Error != nil {
-		return errors.New("user already exists")
-	}
-	return nil
-}
+// func AddUser(u User) error {
+// 	if DB.Create(&u).Error != nil {
+// 		return errors.New("user already exists")
+// 	}
+// 	return nil
+// }
 
 func AddMeterDeposit(md MeterDeposit) error {
 	if DB.Create(&md).Error != nil {
@@ -149,19 +172,19 @@ func AddMeterDeposit(md MeterDeposit) error {
 	return nil
 }
 
-func AddOrder(odr Order) error {
-	if DB.Create(&odr).Error != nil {
-		return errors.New("error while adding Order")
-	}
-	return nil
-}
+// func AddOrder(odr Order) error {
+// 	if DB.Create(&odr).Error != nil {
+// 		return errors.New("error while adding Order")
+// 	}
+// 	return nil
+// }
 
-func AddOrderBoard(ob OrderBoard) error {
-	if DB.Create(&ob).Error != nil {
-		return errors.New("error while adding OrderBoard")
-	}
-	return nil
-}
+// func AddOrderBoard(ob OrderBoard) error {
+// 	if DB.Create(&ob).Error != nil {
+// 		return errors.New("error while adding OrderBoard")
+// 	}
+// 	return nil
+// }
 
 func AddDealTxn(txn DealTxn) error {
 	if DB.Create(&txn).Error != nil {
@@ -177,44 +200,44 @@ func AddDepositRecord(drecord DepositRecord) error {
 	return nil
 }
 
-func AddPowerRecord(pr *PowerRecord) (*PowerRecord, error) {
-	lastPR := GetLatestPowerRecord(pr.MeterID)
-	pr.KwhStocked = lastPR.KwhStocked - pr.KwhConsumed
-	pr.KwhSaleable = lastPR.KwhSaleable + pr.KwhProduced
-	if DB.Create(pr).Error != nil {
-		return pr, errors.New("error while adding PowerRecord")
-	}
-	return pr, nil
-}
+// func AddPowerRecord(pr *PowerRecord) (*PowerRecord, error) {
+// 	lastPR := GetLatestPowerRecord(pr.MeterID)
+// 	pr.KwhStocked = lastPR.KwhStocked - pr.KwhConsumed
+// 	pr.KwhSaleable = lastPR.KwhSaleable + pr.KwhProduced
+// 	if DB.Create(pr).Error != nil {
+// 		return pr, errors.New("error while adding PowerRecord")
+// 	}
+// 	return pr, nil
+// }
 
-func UpdatePowerRecordByTxn(txn DealTxn) error {
-	// local, _ := time.LoadLocation("Local")
-	// now := time.Now().In(local)
-	now := time.Now().UTC().Add(8 * time.Hour)
-	var buy, sell Order
-	DB.First(&buy, "id = ?", txn.BuyOrderID)
-	DB.First(&sell, "id = ?", txn.SellOrderID)
-	mtBuy := GetMeterDepositByDepositNo(buy.DepositNo)
-	brecord := GetLatestPowerRecord(mtBuy.MeterID)
-	stocked := brecord.KwhStocked + txn.Kwh
-	buyPR := PowerRecord{0, 0, stocked,
-		brecord.KwhSaleable, now, brecord.MeterID}
+// func UpdatePowerRecordByTxn(txn DealTxn) error {
+// 	// local, _ := time.LoadLocation("Local")
+// 	// now := time.Now().In(local)
+// 	now := time.Now().UTC().Add(8 * time.Hour)
+// 	var buy, sell Order
+// 	DB.First(&buy, "id = ?", txn.BuyOrderID)
+// 	DB.First(&sell, "id = ?", txn.SellOrderID)
+// 	mtBuy := GetMeterDepositByDepositNo(buy.DepositNo)
+// 	brecord := GetLatestPowerRecord(mtBuy.MeterID)
+// 	stocked := brecord.KwhStocked + txn.Kwh
+// 	buyPR := PowerRecord{0, 0, stocked,
+// 		brecord.KwhSaleable, now, brecord.MeterID}
 
-	if DB.Create(&buyPR).Error != nil {
-		return errors.New("error while updating Power Record of Meter ID[" + buyPR.MeterID + "]")
-	}
+// 	if DB.Create(&buyPR).Error != nil {
+// 		return errors.New("error while updating Power Record of Meter ID[" + buyPR.MeterID + "]")
+// 	}
 
-	mtSell := GetMeterDepositByDepositNo(sell.DepositNo)
-	srecord := GetLatestPowerRecord(mtSell.MeterID)
-	saleable := srecord.KwhSaleable - txn.Kwh
-	sellPR := PowerRecord{0, 0, srecord.KwhStocked,
-		saleable, now, srecord.MeterID}
-	if DB.Create(&sellPR).Error != nil {
-		return errors.New("error while updating Power Record of Meter ID[" + sellPR.MeterID + "]")
-	}
+// 	mtSell := GetMeterDepositByDepositNo(sell.DepositNo)
+// 	srecord := GetLatestPowerRecord(mtSell.MeterID)
+// 	saleable := srecord.KwhSaleable - txn.Kwh
+// 	sellPR := PowerRecord{0, 0, srecord.KwhStocked,
+// 		saleable, now, srecord.MeterID}
+// 	if DB.Create(&sellPR).Error != nil {
+// 		return errors.New("error while updating Power Record of Meter ID[" + sellPR.MeterID + "]")
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 func UpdateOrderByTxn(txn DealTxn) error {
 	var buy, sell Order
@@ -242,14 +265,14 @@ func UpdateOrderByTxn(txn DealTxn) error {
 	return nil
 }
 
-func AllUsers(page int, pagination int) (users []User, count int) {
-	//limit = rows for each page
-	//page 1 -> offset = 0*pagination
-	//page 2 -> offset = 1*pagination
-	DB.Model(&User{}).Count(&count)
-	DB.Offset((page - 1) * pagination).Limit(pagination).Find(&users)
-	return users, count
-}
+// func AllUsers(page int, pagination int) (users []User, count int) {
+// 	//limit = rows for each page
+// 	//page 1 -> offset = 0*pagination
+// 	//page 2 -> offset = 1*pagination
+// 	DB.Model(&User{}).Count(&count)
+// 	DB.Offset((page - 1) * pagination).Limit(pagination).Find(&users)
+// 	return users, count
+// }
 
 func LoginCheck(account string, passwd string) (User, bool) {
 	user := User{}
@@ -262,22 +285,56 @@ func LoginCheck(account string, passwd string) (User, bool) {
 	return user, true
 }
 
-func GetPowerRecordsByMeter(mid string, page int, pagination int) (records []PowerRecord, count int) {
-	//var user User
-	//DB.First(&user, uid)
+// func GetPowerRecordsByMeter(mid string, page int, pagination int) (records []PowerRecord, count int) {
+// 	//var user User
+// 	//DB.First(&user, uid)
 
-	DB.Where("meter_id = ?", mid).Model(&PowerRecord{}).Count(&count)
-	//var records []PowerRecord
-	DB.Offset((page-1)*pagination).Limit(pagination).Where("meter_id = ?", mid).Find(&records)
-	return records, count
+// 	DB.Where("meter_id = ?", mid).Model(&PowerRecord{}).Count(&count)
+// 	//var records []PowerRecord
+// 	DB.Offset((page-1)*pagination).Limit(pagination).Where("meter_id = ?", mid).Find(&records)
+// 	return records, count
+// }
+
+// func GetUndealtOrdersByMeter(mid string, tpe uint8, page int, pagination int) (orders []Order, count int) {
+// 	DB.Where("meter_id = ? AND status = ? AND type = ?", mid, 1, tpe).Model(&Order{}).Count(&count)
+// 	DB.Offset((page-1)*pagination).Limit(pagination).Where("meter_id = ? AND status = ? AND type = ?", mid, 1, tpe).Find(&orders)
+
+// 	return
+// }
+
+func GetPayableByMeter(mid string) float64 {
+	type Result struct {
+		Payable float64
+	}
+	var result Result
+	DB.Table("order").Select("sum((kwh - kwh_dealt)*price) as payable").Where("meter_id = ? AND status = ? AND type = ?", mid, 1, 1).Scan(&result)
+	fmt.Printf("Payable: $%f \n", result.Payable)
+
+	return result.Payable
 }
 
-func GetUndealtOrdersByMeter(mid string, tpe uint8, page int, pagination int) (orders []Order, count int) {
-	DB.Where("meter_id = ? AND status = ? AND type = ?", mid, 1, tpe).Model(&Order{}).Count(&count)
-	DB.Offset((page-1)*pagination).Limit(pagination).Where("meter_id = ? AND status = ? AND type = ?", mid, 1, tpe).Find(&orders)
+func GetReservedKwhByMeter(mid string) float64 {
+	type Result struct {
+		Reserved float64
+	}
+	var result Result
+	DB.Table("order").Select("sum(kwh - kwh_dealt) as reserved").Where("meter_id = ? AND status = ? AND type = ?", mid, 1, 2).Scan(&result)
+	fmt.Printf("Reserved: %f kwh \n", result.Reserved)
 
-	return orders, count
+	return result.Reserved
 }
+
+// func QueryOrders(tpe uint8, status uint8, mid string, begin time.Time, end time.Time, page int, pagination int) (orders []Order, count int) {
+// 	if status == 0 {
+// 		DB.Where("type = ? AND meter_id = ? AND date(created_at) BETWEEN ? AND ?", tpe, mid, begin, end).Model(&Order{}).Count(&count)
+// 		DB.Offset((page-1)*pagination).Limit(pagination).Where("type = ? AND meter_id = ? AND date(created_at) BETWEEN ? AND ?", tpe, mid, begin, end).Find(&orders)
+// 	} else {
+// 		DB.Where("type = ? AND status = ? AND meter_id = ? AND date(created_at) BETWEEN ? AND ?", tpe, status, mid, begin, end).Model(&Order{}).Count(&count)
+// 		DB.Offset((page-1)*pagination).Limit(pagination).Where("type = ? AND status = ? AND meter_id = ? AND date(created_at) BETWEEN ? AND ?", tpe, status, mid, begin, end).Find(&orders)
+// 	}
+
+// 	return
+// }
 
 func GetUndealtKwhByMeter(mid string, tpe uint8) float64 {
 	type Result struct {
@@ -294,25 +351,13 @@ func GetUserMeters(uid uint) (meters []MeterDeposit) {
 	return
 }
 
-func GetUserAllUndealtOrders(uid uint, tpe uint8) (orders []Order) {
-	// var user User
-	// DB.First(&user, uid)
+// func GetUserAllUndealtOrders(uid uint, tpe uint8) (orders []Order) {
+// 	// var user User
+// 	// DB.First(&user, uid)
 
-	// DB.Where("status = ? AND type = ?", 1, tpe).Model(&user).Related(&orders)
-	return orders
-}
-
-func GetLatestPowerRecord(mid string) (prd PowerRecord) {
-	//var prd PowerRecord
-
-	now := time.Now().UTC().Add(8 * time.Hour)
-	// local, _ := time.LoadLocation("Asia/Taipei")
-	// now := time.Now().In(local)
-	DB.Order("updated_at desc").Where("meter_id = ? AND updated_at < ?", mid, now).First(&prd)
-	//fmt.Printf("%+v\n", prd)
-
-	return
-}
+// 	// DB.Where("status = ? AND type = ?", 1, tpe).Model(&user).Related(&orders)
+// 	return orders
+// }
 
 func GetLatestMeterDeposit(orgId uint) interface{} {
 	var meter MeterDeposit
@@ -342,15 +387,15 @@ func GetMeterDepositByDepositNo(depo_no string) (meter MeterDeposit) {
 	return
 }
 
-func GetUndealtOrders(tpe uint8) (orders []OrderBoard) {
-	if tpe == 1 {
-		DB.Order("price desc").Order("created_at asc").Where("status = ? AND type = ? AND expired_at > NOW()", 1, tpe).Find(&orders)
-	} else if tpe == 2 {
-		DB.Order("price asc").Order("created_at asc").Where("status = ? AND type = ? AND expired_at > NOW()", 1, tpe).Find(&orders)
-	}
+// func GetUndealtOrders(tpe uint8) (orders []OrderBoard) {
+// 	if tpe == 1 {
+// 		DB.Order("price desc").Order("created_at asc").Where("status = ? AND type = ? AND expired_at > NOW()", 1, tpe).Find(&orders)
+// 	} else if tpe == 2 {
+// 		DB.Order("price asc").Order("created_at asc").Where("status = ? AND type = ? AND expired_at > NOW()", 1, tpe).Find(&orders)
+// 	}
 
-	return
-}
+// 	return
+// }
 
 func UpdateOrderLocked(oid string, txnKwh float64) error {
 	var order Order
@@ -375,17 +420,17 @@ func UpdateOrderLocked(oid string, txnKwh float64) error {
 	return nil
 }
 
-func (ob *OrderBoard) Transmit(order Order) OrderBoard {
-	ob.ID = order.ID
-	ob.Type = order.Type
-	ob.Price = order.Price
-	ob.Kwh = order.Kwh
-	ob.KwhDealt = order.KwhDealt
-	ob.Status = order.Status
-	ob.MeterID = order.MeterID
-	ob.DepositNo = order.DepositNo
-	ob.CreatedAt = order.CreatedAt
-	ob.ExpiredAt = order.ExpiredAt
+// func (ob *OrderBoard) Transmit(order Order) OrderBoard {
+// 	ob.ID = order.ID
+// 	ob.Type = order.Type
+// 	ob.Price = order.Price
+// 	ob.Kwh = order.Kwh
+// 	ob.KwhDealt = order.KwhDealt
+// 	ob.Status = order.Status
+// 	ob.MeterID = order.MeterID
+// 	ob.DepositNo = order.DepositNo
+// 	ob.CreatedAt = order.CreatedAt
+// 	ob.ExpiredAt = order.ExpiredAt
 
-	return *ob
-}
+// 	return *ob
+// }

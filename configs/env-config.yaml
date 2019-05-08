@@ -1,0 +1,37 @@
+# Settings for runtime environment
+devp:
+  dbhost: 192.168.1.4
+  dbport: 15432
+  dbname: platform_db
+  dbuser: platformer
+  dbpasswd: postgres    
+  leveldbPath: C:\\Database\\leveldb\\platform
+  fabricPath: ./configs/fabric/local/config.yaml
+
+staging:  
+  dbhost: 128.199.88.117
+  dbport: 15432
+  dbname: platform_db
+  dbuser: platformer
+  dbpasswd: postgres  
+  leveldbPath: C:\\Database\\leveldb\\platform
+  fabricPath: ./configs/fabric/staging/config.yaml 
+
+#staging:  
+#  dbhost: wondervoyage.c2mfdbahjldj.us-east-1.rds.amazonaws.com
+#  dbport: 5432
+#  dbname: platform_db
+#  dbuser: wondervoyage
+#  dbpasswd: 50938018  
+#  leveldbPath: C:\\Database\\leveldb\\platform
+#  fabricPath: ./configs/fabric/staging/config.yaml
+
+container:  
+  dbhost: pgdb
+  dbport: 5432
+  dbname: platform_db
+  dbuser: platformer
+  dbpasswd: postgres    
+  leveldbPath: /root/wondervoyage/leveldb
+  fabricPath: /goapp/fabric/config.yaml 
+

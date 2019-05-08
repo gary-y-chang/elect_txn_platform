@@ -24,9 +24,9 @@ client:
     systemCertPool: false
     client:
       key:
-        path: ./configs/fabric/crypto-config/peerOrganizations/org1.acme.com/users/Admin@org1.acme.com/tls/client.key
+        path: ./configs/fabric/local/crypto-config/peerOrganizations/org1.acme.com/users/Admin@org1.acme.com/tls/client.key
       cert:
-        path: ./configs/fabric/crypto-config/peerOrganizations/org1.acme.com/users/Admin@org1.acme.com/tls/client.crt
+        path: ./configs/fabric/local/crypto-config/peerOrganizations/org1.acme.com/users/Admin@org1.acme.com/tls/client.crt
 
 organizations:
   Org1:
@@ -37,17 +37,17 @@ organizations:
     users:
       Admin:
         key:
-          path: ./configs/fabric/crypto-config/peerOrganizations/org1.acme.com/users/Admin@org1.acme.com/msp/keystore/777569cc12f6da36989d871e0c316d473488a9a8800a164b763a6ae6f6957c8b_sk
+          path: ./configs/fabric/local/crypto-config/peerOrganizations/org1.acme.com/users/Admin@org1.acme.com/msp/keystore/777569cc12f6da36989d871e0c316d473488a9a8800a164b763a6ae6f6957c8b_sk
         cert:
-          path: ./configs/fabric/crypto-config/peerOrganizations/org1.acme.com/users/Admin@org1.acme.com/msp/signcerts/Admin@org1.acme.com-cert.pem
+          path: ./configs/fabric/local/crypto-config/peerOrganizations/org1.acme.com/users/Admin@org1.acme.com/msp/signcerts/Admin@org1.acme.com-cert.pem
       User1:
         key:
-          path: ./configs/fabric/crypto-config/peerOrganizations/org1.acme.com/users/User1@org1.acme.com/msp/keystore/91c10e908bf5f7b2bc788324addd9b17cb20715a09eead1f810b2e8a5fff4828_sk
+          path: ./configs/fabric/local/crypto-config/peerOrganizations/org1.acme.com/users/User1@org1.acme.com/msp/keystore/91c10e908bf5f7b2bc788324addd9b17cb20715a09eead1f810b2e8a5fff4828_sk
         cert:
-          path: ./configs/fabric/crypto-config/peerOrganizations/org1.acme.com/users/User1@org1.acme.com/msp/signcerts/User1@org1.acme.com-cert.pem
+          path: ./configs/fabric/local/crypto-config/peerOrganizations/org1.acme.com/users/User1@org1.acme.com/msp/signcerts/User1@org1.acme.com-cert.pem
   OrdererOrg:
     mspID: OrdererMSP
-    cryptoPath: ./configs/fabric/crypto-config/ordererOrganizations/acme.com/users/Admin@acme.com/msp
+    cryptoPath: ./configs/fabric/local/crypto-config/ordererOrganizations/acme.com/users/Admin@acme.com/msp
 
 channels:
   # name of the channel
@@ -89,7 +89,7 @@ orderers:
       # allow-insecure will be taken into consideration if address has no protocol defined, if true then grpc or else grpcs
       allow-insecure: false
     tlsCACerts:
-      path: ./configs/fabric/crypto-config/ordererOrganizations/acme.com/tlsca/tlsca.acme.com-cert.pem
+      path: ./configs/fabric/local/crypto-config/ordererOrganizations/acme.com/tlsca/tlsca.acme.com-cert.pem
 
 peers:
   peer0.org1.acme.com:
@@ -103,7 +103,7 @@ peers:
       fail-fast: false
       allow-insecure: false
     tlsCACerts:
-      path: ./configs/fabric/crypto-config/peerOrganizations/org1.acme.com/peers/peer0.org1.acme.com/tls/ca.crt
+      path: ./configs/fabric/local/crypto-config/peerOrganizations/org1.acme.com/peers/peer0.org1.acme.com/tls/ca.crt
 
 entityMatchers:
   #peer:
@@ -118,6 +118,3 @@ entityMatchers:
       urlSubstitutionExp: 192.168.1.4:7050
       sslTargetOverrideUrlSubstitutionExp: orderer.acme.com
       mappedHost: orderer.acme.com
-
-
-

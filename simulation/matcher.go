@@ -7,13 +7,15 @@ import (
 
 	uuid "github.com/satori/go.uuid"
 	"github.com/syndtr/goleveldb/leveldb"
+	"gitlab.com/wondervoyage/platform/configs"
 	"gitlab.com/wondervoyage/platform/models"
 )
 
 func BuyHandler(buy models.Order) ([]byte, error) {
 
+	level, err := leveldb.OpenFile(configs.Env.LeveldbPath, nil)
 	//level, err := leveldb.OpenFile("C:\\Database\\leveldb\\platform", nil)
-	level, err := leveldb.OpenFile("/root/wondervoyage/leveldb", nil)
+	//level, err := leveldb.OpenFile("/root/wondervoyage/leveldb", nil)
 	if err != nil {
 		panic(err)
 	}
@@ -70,8 +72,10 @@ func BuyHandler(buy models.Order) ([]byte, error) {
 					txn.TxnDate = time.Now().UTC().Add(8 * time.Hour)
 					txn.BuyOrderID = buy.ID
 					txn.BuyDepositNo = buy.DepositNo
+					txn.BuyMeterID = buy.MeterID
 					txn.SellOrderID = sale.ID
 					txn.SellDepositNo = sale.DepositNo
+					txn.SellMeterID = sale.MeterID
 					txns = append(txns, txn)
 
 					continue
@@ -102,8 +106,10 @@ func BuyHandler(buy models.Order) ([]byte, error) {
 					txn.TxnDate = time.Now().UTC().Add(8 * time.Hour)
 					txn.BuyOrderID = buy.ID
 					txn.BuyDepositNo = buy.DepositNo
+					txn.BuyMeterID = buy.MeterID
 					txn.SellOrderID = sale.ID
 					txn.SellDepositNo = sale.DepositNo
+					txn.SellMeterID = sale.MeterID
 					txns = append(txns, txn)
 					jsonTxn, err := json.Marshal(txns)
 
@@ -136,8 +142,10 @@ func BuyHandler(buy models.Order) ([]byte, error) {
 					txn.TxnDate = time.Now().UTC().Add(8 * time.Hour)
 					txn.BuyOrderID = buy.ID
 					txn.BuyDepositNo = buy.DepositNo
+					txn.BuyMeterID = buy.MeterID
 					txn.SellOrderID = sale.ID
 					txn.SellDepositNo = sale.DepositNo
+					txn.SellMeterID = sale.MeterID
 					txns = append(txns, txn)
 					jsonTxn, err := json.Marshal(txns)
 
@@ -162,9 +170,9 @@ func BuyHandler(buy models.Order) ([]byte, error) {
 }
 
 func SellHandler(sell models.Order) ([]byte, error) {
-
+	level, err := leveldb.OpenFile(configs.Env.LeveldbPath, nil)
 	//level, err := leveldb.OpenFile("C:\\Database\\leveldb\\platform", nil)
-	level, err := leveldb.OpenFile("/root/wondervoyage/leveldb", nil)
+	//level, err := leveldb.OpenFile("/root/wondervoyage/leveldb", nil)
 	if err != nil {
 		panic(err)
 	}
@@ -220,8 +228,10 @@ func SellHandler(sell models.Order) ([]byte, error) {
 					txn.TxnDate = time.Now().UTC().Add(8 * time.Hour)
 					txn.BuyOrderID = buy.ID
 					txn.BuyDepositNo = buy.DepositNo
+					txn.BuyMeterID = buy.MeterID
 					txn.SellOrderID = sell.ID
 					txn.SellDepositNo = sell.DepositNo
+					txn.SellMeterID = sell.MeterID
 					txns = append(txns, txn)
 
 					continue
@@ -251,8 +261,10 @@ func SellHandler(sell models.Order) ([]byte, error) {
 					txn.TxnDate = time.Now().UTC().Add(8 * time.Hour)
 					txn.BuyOrderID = buy.ID
 					txn.BuyDepositNo = buy.DepositNo
+					txn.BuyMeterID = buy.MeterID
 					txn.SellOrderID = sell.ID
 					txn.SellDepositNo = sell.DepositNo
+					txn.SellMeterID = sell.MeterID
 					txns = append(txns, txn)
 					jsonTxn, err := json.Marshal(txns)
 
@@ -284,8 +296,10 @@ func SellHandler(sell models.Order) ([]byte, error) {
 					txn.TxnDate = time.Now().UTC().Add(8 * time.Hour)
 					txn.BuyOrderID = buy.ID
 					txn.BuyDepositNo = buy.DepositNo
+					txn.BuyMeterID = buy.MeterID
 					txn.SellOrderID = sell.ID
 					txn.SellDepositNo = sell.DepositNo
+					txn.SellMeterID = sell.MeterID
 					txns = append(txns, txn)
 					jsonTxn, err := json.Marshal(txns)
 
