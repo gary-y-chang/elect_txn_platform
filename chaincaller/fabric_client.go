@@ -12,22 +12,25 @@ import (
 	"gitlab.com/wondervoyage/platform/models"
 )
 
-var SDK *fabsdk.FabricSDK
+//var SDK *fabsdk.FabricSDK
 
-func init() {
-	var err error
-	//configProvider := config.FromFile("./config.yaml")
-	SDK, err = fabsdk.New(config.FromFile(configs.Env.FabricPath))
-	//SDK, err = fabsdk.New(config.FromFile("./configs/fabric/local/config.yaml"))
-	//SDK, err = fabsdk.New(config.FromFile("./configs/fabric/staging/config.yaml"))
-	//SDK, err = fabsdk.New(config.FromFile("/goapp/fabric/config.yaml"))
+// func init() {
+// 	var err error
+// 	//configProvider := config.FromFile("./config.yaml")
+// 	SDK, err = fabsdk.New(config.FromFile(configs.Env.FabricPath))
+// 	if err != nil {
+// 		log.Fatalf("create sdk fail: %s\n", err.Error())
+// 	}
+// }
+
+func PlaceOrder(action string, ord models.Order) ([]byte, error) {
+	sdk, err := fabsdk.New(config.FromFile(configs.Env.FabricPath))
 	if err != nil {
 		log.Fatalf("create sdk fail: %s\n", err.Error())
 	}
-}
+	defer sdk.Close()
 
-func PlaceOrder(action string, ord models.Order) ([]byte, error) {
-	channelProvider := SDK.ChannelContext("mychannel", fabsdk.WithUser("User1"), fabsdk.WithOrg("Org1"))
+	channelProvider := sdk.ChannelContext("mychannel", fabsdk.WithUser("User1"), fabsdk.WithOrg("Org1"))
 	channelClient, err := channel.New(channelProvider)
 	if err != nil {
 		log.Fatalf("create channel client fail: %s\n", err.Error())
@@ -68,7 +71,13 @@ func PlaceOrder(action string, ord models.Order) ([]byte, error) {
 }
 
 func Balance(action string, arg string) ([]byte, error) {
-	channelProvider := SDK.ChannelContext("mychannel", fabsdk.WithUser("User1"), fabsdk.WithOrg("Org1"))
+	sdk, err := fabsdk.New(config.FromFile(configs.Env.FabricPath))
+	if err != nil {
+		log.Fatalf("create sdk fail: %s\n", err.Error())
+	}
+	defer sdk.Close()
+
+	channelProvider := sdk.ChannelContext("mychannel", fabsdk.WithUser("User1"), fabsdk.WithOrg("Org1"))
 	channelClient, err := channel.New(channelProvider)
 	if err != nil {
 		log.Fatalf("create channel client fail: %s\n", err.Error())

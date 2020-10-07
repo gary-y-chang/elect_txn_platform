@@ -76,7 +76,7 @@ channels:
 
 orderers:
   orderer.acme.com:
-    url: 128.199.88.117:7050
+    url: 206.189.155.225:7050
     grpcOptions:
       ssl-target-name-override: orderer.acme.com
       # These parameters should be set in coordination with the keepalive policy on the server,
@@ -93,8 +93,8 @@ orderers:
 
 peers:
   peer0.org1.acme.com:
-    url: 128.199.88.117:7051
-    eventUrl: 128.199.88.117:7053
+    url: 206.189.155.225:7051
+    eventUrl: 206.189.155.225:7053
     grpcOptions:
       ssl-target-name-override: peer0.org1.acme.com
       keep-alive-time: 0s
@@ -115,7 +115,7 @@ entityMatchers:
 
   orderer:
     - pattern: orderer.acme.com
-      urlSubstitutionExp: 128.199.88.117:7050
+      urlSubstitutionExp: 206.189.155.225:7050
       sslTargetOverrideUrlSubstitutionExp: orderer.acme.com
       mappedHost: orderer.acme.com
 

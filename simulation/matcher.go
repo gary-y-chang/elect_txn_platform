@@ -34,7 +34,7 @@ func BuyHandler(buy models.Order) ([]byte, error) {
 	txns := make([]models.DealTxn, 0)
 
 	//st, err := redis.ByteSlices(c.Do("LRANGE", "simu-sell-list", 0, -1))
-	var match bool = true
+	var match = true
 	for match {
 		sales := models.GetUndealtOrders(2) //sell-list
 		for i, sale := range sales {
@@ -187,7 +187,7 @@ func SellHandler(sell models.Order) ([]byte, error) {
 	txnId := uuid.NewV4().String()
 	txns := make([]models.DealTxn, 0)
 	//st, err := redis.ByteSlices(c.Do("LRANGE", "simu-buy-list", 0, -1))
-	var match bool = true
+	var match = true
 	for match {
 		buyes := models.GetUndealtOrders(1) //buy-list
 		for i, buy := range buyes {

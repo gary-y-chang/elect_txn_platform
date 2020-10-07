@@ -53,7 +53,7 @@ func createUser(c echo.Context) error {
 }
 
 func createMeterDeposit(c echo.Context) error {
-	//TODO:
+	//TODO: logic for doing authorization on 'isAdmin'
 	user := c.Get("user").(*jwt.Token)
 	claims := user.Claims.(jwt.MapClaims)
 	account := claims["account"].(string)
@@ -93,8 +93,7 @@ func createMeterDeposit(c echo.Context) error {
 	meter.UpdatedAt = now
 
 	//prepare  Deposit
-	deposit := models.Deposit{meter.DepositNo,
-		0, 0, now, now, meter.UserID}
+	deposit := models.Deposit{meter.DepositNo, 0, now, now, meter.UserID}
 
 	//prepare  DepositRecord
 	rec := models.DepositRecord{deposit.DepositNo, deposit.UserID,
@@ -129,18 +128,12 @@ func createOrder(c echo.Context) error {
 	//claims := user.Claims.(jwt.MapClaims)
 	//account := claims["account"].(string)
 
-	// meterByte, _ := redis.Bytes(RedisConn.Do("HGET", "meter-in-use", account))
-	// var meter models.MeterDeposit
-	// json.Unmarshal(meterByte, &meter)
-
 	ord.DepositNo = meterInUse[account].DepositNo
 	ord.MeterID = meterInUse[account].MeterID
 	ord.Status = 1
-	//ord.ID = uuid.Must(uuid.NewV4()).String()
 	ord.ID = uuid.NewV4().String()
 
 	//TODO:  next, invoke the chaincode to place the order,  a DealTxn should be returned
-	// here is a simulation
 	var txnJson []byte
 	var err error
 	if ord.Type == 1 { //buy
@@ -370,7 +363,6 @@ func getDashboardInfo(c echo.Context) error {
 		"balance":    fmt.Sprintf("%.1f", depo.Balance)})
 }
 
-//TODO:
 func getUserMeters(c echo.Context) error {
 	usrid := c.Param("uid")
 	uid, err := strconv.Atoi(usrid)
@@ -438,7 +430,7 @@ func switchMeterInUse(c echo.Context) error {
 	args := []string{meterInUse[account].DepositNo}
 	byteDeposit, err := simulation.Invoke("query", args)
 	//TODO: invoke chaincode get Balance
-	//byteDeposit, err := chaincaller.Balance("query", meter.DepositNo)
+	//byteDeposit, err := chaincaller.Balance("query", meterInUse[account].DepositNo)
 	if err != nil {
 		return err
 	}

@@ -80,7 +80,7 @@ func GetUndealtOrdersByMeter(mid string, tpe uint8, page int, pagination int) (o
 	
 	for _, o := range orders {
 		od := new(OrderDisplay)
-		odrs = append(odrs, od.TransToDisplay(o))
+		odrs = append(odrs, od.Transmit(o))
 	}
 	return
 }

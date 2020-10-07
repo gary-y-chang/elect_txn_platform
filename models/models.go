@@ -123,7 +123,6 @@ type DepositRecord struct {
 type Deposit struct {
 	DepositNo string
 	Balance   float64
-	Payable   float64
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	UserID    uint

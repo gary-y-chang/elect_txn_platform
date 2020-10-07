@@ -1,9 +1,9 @@
 # Settings for runtime environment
 devp:
-  dbhost: 192.168.1.4
+  dbhost: 127.0.0.1
   dbport: 15432
   dbname: platform_db
-  dbuser: platformer
+  dbuser: postgres
   dbpasswd: postgres    
   leveldbPath: C:\\Database\\leveldb\\platform
   fabricPath: ./configs/fabric/local/config.yaml
